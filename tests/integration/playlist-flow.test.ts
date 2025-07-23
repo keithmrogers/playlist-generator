@@ -1,5 +1,6 @@
 import { PlaylistService, Playlist, Track } from '../../src/services/playlist-service';
 import { SpotifyService } from '../../src/services/spotify-service';
+import SpotifyWebApi from 'spotify-web-api-node';
 import * as path from 'path';
 import * as fs from 'fs';
 import { jest } from '@jest/globals';
@@ -71,7 +72,7 @@ describe('Playlist Integration Tests', () => {
       }
     ];
     
-    mockSearchTracks.mockResolvedValue({
+    mockSearchTracks.mockReturnValueOnce({
       body: {
         tracks: {
           items: mockTracks
@@ -79,7 +80,7 @@ describe('Playlist Integration Tests', () => {
       }
     });
     
-    mockClientCredentialsGrant.mockResolvedValue({
+    mockClientCredentialsGrant.mockReturnValueOnce({
       body: { 'access_token': 'mock-token' }
     });
     
@@ -116,7 +117,7 @@ describe('Playlist Integration Tests', () => {
 
   test('Handle empty search results gracefully', async () => {
     // Mock empty spotify search response
-    mockSearchTracks.mockResolvedValue({
+    mockSearchTracks.mockReturnValueOnce({
       body: {
         tracks: {
           items: []
@@ -124,7 +125,7 @@ describe('Playlist Integration Tests', () => {
       }
     });
     
-    mockClientCredentialsGrant.mockResolvedValue({
+    mockClientCredentialsGrant.mockReturnValueOnce({
       body: { 'access_token': 'mock-token' }
     });
     

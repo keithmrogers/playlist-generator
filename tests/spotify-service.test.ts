@@ -34,7 +34,7 @@ describe('SpotifyService', () => {
       const mockToken = 'mock-access-token';
       const mockResponse = { body: { 'access_token': mockToken } };
       
-      mockClientCredentialsGrant.mockResolvedValue(mockResponse);
+      mockClientCredentialsGrant.mockReturnValueOnce(mockResponse);
       
       await spotifyService.authorize();
       
@@ -66,7 +66,7 @@ describe('SpotifyService', () => {
         }
       };
       
-      mockSearchTracks.mockResolvedValue(mockSearchResult);
+      mockSearchTracks.mockReturnValueOnce(mockSearchResult);
       
       const result = await spotifyService.searchTracks('test query');
       
@@ -86,7 +86,7 @@ describe('SpotifyService', () => {
         }
       };
       
-      mockSearchTracks.mockResolvedValue(mockSearchResult);
+      mockSearchTracks.mockReturnValueOnce(mockSearchResult);
       
       const result = await spotifyService.searchTracks('no results query');
       
@@ -100,7 +100,7 @@ describe('SpotifyService', () => {
         }
       };
       
-      mockSearchTracks.mockResolvedValue(mockSearchResult);
+      mockSearchTracks.mockReturnValueOnce(mockSearchResult);
       
       const result = await spotifyService.searchTracks('bad query');
       
