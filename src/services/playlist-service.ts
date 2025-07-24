@@ -20,7 +20,7 @@ export class PlaylistService {
   }
 
   async savePlaylist(playlist: Playlist): Promise<string> {
-    const safeFileName = `${playlist.name.replace(/[\\/]/g, '_')}.json`;
+    const safeFileName = `${playlist.name.replace(/[\\/ ]/g, '_')}.json`;
     const filePath = path.join(this.playlistsDir, safeFileName);
     
     await fs.writeFile(filePath, JSON.stringify(playlist, null, 2));

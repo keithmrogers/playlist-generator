@@ -1,4 +1,22 @@
 // @ts-nocheck
+jest.mock('discord.js', () => {
+  const actual = jest.requireActual('discord.js');
+  return {
+    ...actual,
+    Client: jest.fn().mockImplementation(() => ({
+      login: jest.fn(),
+      once: jest.fn(),
+      channels: { fetch: jest.fn() },
+      destroy: jest.fn()
+    }))
+  };
+});
+
+jest.mock('@discordjs/voice', () => ({
+  joinVoiceChannel: jest.fn(),
+  createAudioPlayer: jest.fn()
+}));
+
 import { DiscordService } from '../../src/services/discord-service';
 import { Client, GatewayIntentBits } from 'discord.js';
 import { joinVoiceChannel, createAudioPlayer } from '@discordjs/voice';
@@ -20,16 +38,7 @@ describe('DiscordService', () => {
     mockLogin = jest.fn();
     mockOnce = jest.fn();
     mockFetch = jest.fn();
-    mockDestroyClient = jest.fn();
-
-    // Mock Client
-    (Client as unknown as jest.Mock).mockImplementation(() => ({
-      login: mockLogin,
-      once: mockOnce,
-      channels: { fetch: mockFetch },
-      destroy: mockDestroyClient
-    }));
-
+    
     // Mock joinVoiceChannel and player
     mockSubscribe = jest.fn();
     mockConnection = { subscribe: mockSubscribe, destroy: jest.fn() };

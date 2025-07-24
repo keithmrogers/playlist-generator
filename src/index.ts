@@ -5,8 +5,7 @@ import path from 'path';
 import inquirer from 'inquirer';
 import { DiscordService } from './services/discord-service';
 import { createAudioResource } from '@discordjs/voice';
-import ytdl from 'ytdl-core';
-import ytSearch from 'yt-search';
+import { YouTubeService } from './services/youtube-service';
 
 interface Track {
   name: string;
@@ -88,15 +87,15 @@ async function streamPlaylist(): Promise<void> {
   // Setup Discord service
   const discord = new DiscordService(process.env.DISCORD_TOKEN!, process.env.DISCORD_VOICE_CHANNEL_ID!);
   await discord.init();
+  const youtube = new YouTubeService();
   for (const track of playlist.tracks) {
-    const search = await ytSearch(`${track.name} ${track.artists.join(' ')}`);
-    const video = search.videos.length ? search.videos[0] : null;
+    const video = await youtube.search(`${track.name} ${track.artists.join(' ')}`);
     if (!video) {
       console.log(`Cannot find YouTube result for ${track.name}`);
       continue;
     }
     console.log(`Streaming ${track.name} from ${video.title}`);
-    const stream = ytdl(video.url, { filter: 'audioonly', quality: 'highestaudio' });
+    const stream = await youtube.getAudioStream(video.url);
     const resource = createAudioResource(stream);
     await discord.playResource(resource);
   }
@@ -104,30 +103,30 @@ async function streamPlaylist(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  await authorizeSpotify();
-  let running = true;
-  while (running) {
-    const { action } = await inquirer.prompt<{ action: string }>({
-      type: 'list', name: 'action', message: 'Choose an action:',
-      choices: [
-        { name: 'Create a new playlist', value: 'create' },
-        { name: 'Stream a playlist to Discord', value: 'stream' },
-        { name: 'Exit', value: 'exit' }
-      ]
-    });
-    switch (action) {
-      case 'create':
-        await createPlaylistLocal();
-        break;
-      case 'stream':
-        await streamPlaylist();
-        break;
-      case 'exit':
-        running = false;
-        break;
-    }
-  }
-  process.exit(0);
-}
+   await authorizeSpotify();
+   let running = true;
+   while (running) {
+     const { action } = await inquirer.prompt<{ action: string }>({
+       type: 'list', name: 'action', message: 'Choose an action:',
+       choices: [
+         { name: 'Create a new playlist', value: 'create' },
+         { name: 'Stream a playlist to Discord', value: 'stream' },
+         { name: 'Exit', value: 'exit' }
+       ]
+     });
+     switch (action) {
+       case 'create':
+         await createPlaylistLocal();
+         break;
+       case 'stream':
+         await streamPlaylist();
+         break;
+       case 'exit':
+         running = false;
+         break;
+     }
+   }
+   process.exit(0);
+ }
 
 main().catch(err => console.error(err));

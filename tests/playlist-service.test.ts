@@ -1,9 +1,7 @@
 import { PlaylistService, Playlist, Track } from '../src/services/playlist-service';
-import * as fs from 'fs';
-import * as path from 'path';
 import { jest } from '@jest/globals';
 
-// Mock fs and path modules
+// Mock fs/promises and path modules
 jest.mock('fs/promises', () => ({
   writeFile: jest.fn(),
   readdir: jest.fn(),
@@ -12,12 +10,16 @@ jest.mock('fs/promises', () => ({
 }));
 
 jest.mock('path', () => ({
-  join: jest.fn((...args) => args.join('/'))
+  join: jest.fn((...args) => args.join('/')),
 }));
 
 describe('PlaylistService', () => {
   let playlistService: PlaylistService;
-  const mockPlaylistsDir = '/test/playlists';
+  let path: any;
+  const mockPlaylistsDir = (() => {
+    path = require('path');
+    return path.join(__dirname, '../temp-test-playlists');
+  })();
   
   // Sample test data
   const testPlaylist: Playlist = {
@@ -30,6 +32,7 @@ describe('PlaylistService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.resetModules();
     playlistService = new PlaylistService(mockPlaylistsDir);
   });
 
