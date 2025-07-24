@@ -1,4 +1,4 @@
-import { PlaylistService, Playlist, Track } from '../src/services/playlist-service';
+import { PlaylistService, Playlist, Track } from '../../src/services/playlist-service';
 import { jest } from '@jest/globals';
 
 // Mock fs/promises and path modules

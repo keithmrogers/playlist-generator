@@ -1,4 +1,4 @@
-import { SpotifyService } from '../src/services/spotify-service';
+import { SpotifyService } from '../../src/services/spotify-service';
 import SpotifyWebApi from 'spotify-web-api-node';
 import { jest } from '@jest/globals';
 

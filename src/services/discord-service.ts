@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits, VoiceBasedChannel } from 'discord.js';
-import { joinVoiceChannel, createAudioPlayer, AudioPlayer, AudioResource, VoiceConnection, AudioPlayerStatus } from '@discordjs/voice';
+import { joinVoiceChannel, createAudioPlayer, AudioPlayer, AudioResource, VoiceConnection, AudioPlayerStatus, VoiceConnectionStatus } from '@discordjs/voice';
 
 export class DiscordService {
   private client: Client;
@@ -34,5 +34,12 @@ export class DiscordService {
   destroy(): void {
     this.connection?.destroy();
     this.client.destroy();
+  }
+
+  /** returns whether the Discord client is ready and the voice connection is established */
+  public healthCheck(): { clientReady: boolean; voiceConnected: boolean } {
+    const clientReady = this.client.readyAt !== null;
+    const voiceConnected = this.connection?.state.status === VoiceConnectionStatus.Ready;
+    return { clientReady, voiceConnected: !!voiceConnected };
   }
 }
