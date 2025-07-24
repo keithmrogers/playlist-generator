@@ -30,7 +30,7 @@ const templates: PromptTemplate[] = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../templates/promptTemplates.json'), 'utf-8')
 );
 const campaignConfig: CampaignConfig = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'config/campaign.json'), 'utf-8')
+  fs.readFileSync(path.join(__dirname, '../config/campaign.json'), 'utf-8')
 );
 const promptService = new PromptService(templates, campaignConfig);
 
