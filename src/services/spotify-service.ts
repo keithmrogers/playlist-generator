@@ -1,5 +1,5 @@
 import SpotifyWebApi from 'spotify-web-api-node';
-import { Track } from './playlist-service';
+import { Track } from './playlist-service.js';
 
 export interface SpotifyTrackSearchResult {
   tracks: Track[];
