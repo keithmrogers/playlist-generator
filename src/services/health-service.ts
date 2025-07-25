@@ -19,8 +19,8 @@ export class HealthService {
     const spotifyOk = await this.checkSpotify();
     const discordOk = await this.checkDiscord();
     const ytOk = await this.checkYouTube();
-    const playlistsOk = await this.checkPlaylistsDir();
-    return spotifyOk && discordOk && ytOk && playlistsOk;
+    const configOk = await this.checkCampaignConfig();
+    return spotifyOk && discordOk && ytOk && configOk;
   }
 
   private async checkSpotify(): Promise<boolean> {
@@ -78,14 +78,15 @@ export class HealthService {
     }
   }
 
-  private async checkPlaylistsDir(): Promise<boolean> {
-    console.log('Checking playlists directory...');
+  private async checkCampaignConfig(): Promise<boolean> {
+    console.log('Checking campaign config file...');
+    const configPath = path.join(process.cwd(), 'config/campaign.json');
     try {
-      fs.accessSync(path.join(process.cwd(), 'playlists'));
-      console.log('Playlists directory: OK');
+      fs.accessSync(configPath);
+      console.log('Campaign config: OK');
       return true;
     } catch (err) {
-      console.error('Playlists directory: ERROR', err);
+      console.error('Campaign config: ERROR', err);
       return false;
     }
   }

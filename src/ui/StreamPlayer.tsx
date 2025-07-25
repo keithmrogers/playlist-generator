@@ -17,17 +17,18 @@ const StreamPlayer: React.FC<StreamPlayerProps> = ({ tracks, onDone }) => {
 
   useEffect(() => {
     console.log('[StreamPlayer] mounting, initializing Discord connection');
-    const init = async () => {
+    let ds: DiscordService | null = null;
+    (async () => {
       console.log('[StreamPlayer] calling DiscordService.init()');
-      const ds = new DiscordService(process.env['DISCORD_TOKEN']!, process.env['DISCORD_VOICE_CHANNEL_ID']!);
+      ds = new DiscordService(process.env['DISCORD_TOKEN']!, process.env['DISCORD_VOICE_CHANNEL_ID']!);
       await ds.init();
+      await ds.connectVoice();
       console.log('[StreamPlayer] Discord connected');
       setDiscord(ds);
-    };
-    init();
+    })();
     return () => {
       console.log('[StreamPlayer] unmounting, destroying Discord connection');
-      discord?.destroy();
+      ds?.destroy();
     };
   }, []);
 

@@ -4,7 +4,8 @@ import path from 'path';
 export interface Track {
   name: string;
   artists: string[];
-  uri: string;
+  uri?: string;
+  popularity?: number;
 }
 
 export interface Playlist {
@@ -20,6 +21,8 @@ export class PlaylistService {
   }
 
   async savePlaylist(playlist: Playlist): Promise<string> {
+    // ensure directory exists
+    await fs.mkdir(this.playlistsDir, { recursive: true });
     const safeFileName = `${playlist.name.replace(/[\\/ ]/g, '_')}.json`;
     const filePath = path.join(this.playlistsDir, safeFileName);
     
