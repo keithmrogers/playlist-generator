@@ -24,15 +24,31 @@ const PlaylistPicker: React.FC<PlaylistPickerProps> = ({ onDone }) => {
   }
 
   const [selectedTracks, setSelectedTracks] = useState<Track[] | null>(null);
+  // Custom renderer that colors playlist name (green when selected) and tags (cyan)
+  const PlaylistItem = ({ label, isSelected = false }: { label: string; isSelected?: boolean }) => {
+    // split label into name and tags portion
+    const idx = label.indexOf(' [');
+    const nameStr = idx >= 0 ? label.slice(0, idx) : label;
+    const tagStr = idx >= 0 ? label.slice(idx) : '';
+    return (
+      <Text>
+        <Text color={isSelected ? 'green' : undefined}>{nameStr}</Text>
+        {tagStr && <Text color="cyan">{tagStr}</Text>}
+      </Text>
+    );
+  };
+
   const items = files.map((file: string) => {
-    // read playlist to get its true name
     const raw = fs.readFileSync(path.join(process.cwd(), 'playlists', file), 'utf-8');
     let name = file.replace(/\.json$/, '');
+    let tags: string[] = [];
     try {
       const pl = JSON.parse(raw) as Playlist;
       name = pl.name;
+      tags = pl.tags || [];
     } catch {}
-    return { label: name, value: file };
+    const label = tags.length ? `${name} [${tags.join(', ')}]` : name;
+    return { label, value: file };
   });
 
   const handleSelect = (item: { label: string; value: string }) => {
@@ -48,8 +64,8 @@ const PlaylistPicker: React.FC<PlaylistPickerProps> = ({ onDone }) => {
 
   return (
     <Box flexDirection="column">
-      <Text color={theme.accent}>Select a playlist to stream:</Text>
-      <SelectInput items={items} onSelect={handleSelect} />
+      <Text>Select a playlist to stream:</Text>
+      <SelectInput items={items} onSelect={handleSelect} itemComponent={PlaylistItem} />
     </Box>
   );
 };

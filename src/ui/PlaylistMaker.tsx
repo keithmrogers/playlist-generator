@@ -1,11 +1,10 @@
 import React, { useState, useRef, useContext } from 'react';
 import { Box, Text, useInput } from 'ink';
-import TextInput from 'ink-text-input';
 import fs from 'fs';
 import path from 'path';
 import { CampaignConfig, PromptService, PromptTemplate } from '../services/prompt-service.js';
 import { Playlist, PlaylistService } from '../services/playlist-service.js';
-import { ThemeContext } from './ThemeProvider.js';
+import TextInput from 'ink-text-input';
 
 // Initialize prompt service once
 const templates: PromptTemplate[] = JSON.parse(
@@ -37,23 +36,27 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
   const [input, setInput] = useState(fields[0]?.default);
   const [values, setValues] = useState<Record<string,string>>({});
   const [promptText, setPromptText] = useState<string>('');
-  const [stage, setStage] = useState<'form'|'display'|'input'>('form');
+  const [stage, setStage] = useState<'choose'|'form'|'display'|'input'|'jsonVars'>('choose');
+  const [jsonVarsInput, setJsonVarsInput] = useState<string>('');
   const jsonBuffer = useRef<string>('');
-  // State for displaying buffer content
+  // State for displaying buffer content (for playlist JSON and vars)
   const [displayBuffer, setDisplayBuffer] = useState<string>('');
 
   useInput((input, key) => {
-    if (stage === 'display') {
-      setStage('input');
+    if (stage === 'choose') {
+      if (input.toLowerCase() === 'j') setStage('jsonVars');
+      else setStage('form');
     } else if (stage === 'input') {
       if (key.return) {
         handleSubmitJson(jsonBuffer.current);
-        jsonBuffer.current = ''; // clear buffer
+        jsonBuffer.current = '';
         setDisplayBuffer('');
       } else {
         jsonBuffer.current += input;
         setDisplayBuffer(jsonBuffer.current);
       }
+    } else if (stage === 'display') {
+      setStage('input');
     }
   });
 
@@ -102,11 +105,39 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
     onDone();
   };
 
+  // Handle JSON vars quick-start
+  const handleSubmitVars = async (jsonString: string) => {
+    let varsObj: Record<string, any>;
+    console.log('Parsing JSON vars:', jsonString); 
+    JSON.parse(jsonString); 
+    try { varsObj = JSON.parse(jsonString); } catch (err) { console.error('Invalid JSON'); return; }
+    setValues(varsObj);
+    const numTracks = parseInt(varsObj['numberOfTracks'] || values['numberOfTracks'] || '10');
+    const searchCount = numTracks * 3.5;
+    const promptVars = { ...varsObj, searchCount, numberOfTracks: (varsObj['numberOfTracks']?.toString()||'10') };
+    const p = await promptService.getPrompt('campaign_playlist', promptVars);
+    setPromptText(p);
+    setStage('display');
+  };
+
   return (
     <Box flexDirection="column">
-      {stage === 'form' ? (
+      {stage === 'choose' ? (
         <>
-          <Box><Text color={theme.accent}>{fields[index]?.label}</Text></Box>
+          <Text>Press 'j' to input JSON variables for quick playlist making, or any other key for interactive mode</Text>
+        </>
+      ) : stage === 'jsonVars' ? (
+        <>
+          <Text>Paste JSON variables and press Enter:</Text>
+          <TextInput
+            value={jsonVarsInput}
+            onChange={setJsonVarsInput}
+            onSubmit={() => handleSubmitVars(jsonVarsInput)}
+          />
+        </>
+      ) : stage === 'form' ? (
+        <>
+          <Text>{fields[index]?.label} (default: {fields[index]?.default}):</Text>
           <TextInput
             value={input || ''}
             onChange={setInput}
@@ -115,18 +146,20 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
         </>
       ) : stage === 'display' ? (
         <>
-          <Text color={theme.highlight} bold>=== COPY PROMPT TO LLM ===</Text>
-          <Box marginY={1}><Text color={theme.textPrimary}>{promptText}</Text></Box>
-          <Text color={theme.accent}>Press any key to input playlist JSON</Text>
+          <Text bold>=== COPY PROMPT TO LLM ===</Text>
+          <Box marginY={1} borderStyle="round" padding={1} flexDirection="column">
+            <Text>{promptText}</Text>
+          </Box>
+          <Text>Press any key to paste JSON playlist</Text>
         </>
-      ) : (
+      ) : stage === 'input' ? (
         <>
           <Text color={theme.accent}>Paste playlist JSON and press Enter:</Text>
           <Box borderStyle="round" padding={1} flexDirection="column" borderColor={theme.surface}>
             <Text color={theme.textSecondary}>{displayBuffer}</Text>
           </Box>
         </>
-      )}
+      ) : null}
     </Box>
   );
 };

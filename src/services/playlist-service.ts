@@ -10,6 +10,7 @@ export interface Track {
 
 export interface Playlist {
   name: string;
+  tags?: string[];
   tracks: Track[];
 }
 
