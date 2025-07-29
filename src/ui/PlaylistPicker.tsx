@@ -32,8 +32,8 @@ const PlaylistPicker: React.FC<PlaylistPickerProps> = ({ onDone }) => {
     const tagStr = idx >= 0 ? label.slice(idx) : '';
     return (
       <Text>
-        <Text color={isSelected ? 'green' : undefined}>{nameStr}</Text>
-        {tagStr && <Text color="cyan">{tagStr}</Text>}
+        <Text color={isSelected ? theme.success : theme.textPrimary}>{nameStr}</Text>
+        {tagStr && <Text color={theme.highlight}>{tagStr}</Text>}
       </Text>
     );
   };

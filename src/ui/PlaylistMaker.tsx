@@ -124,11 +124,11 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
     <Box flexDirection="column">
       {stage === 'choose' ? (
         <>
-          <Text>Press 'j' to input JSON variables for quick playlist making, or any other key for interactive mode</Text>
+          <Text color={theme.accent}>Press 'j' to input JSON variables for quick playlist making, or any other key for interactive mode</Text>
         </>
       ) : stage === 'jsonVars' ? (
         <>
-          <Text>Paste JSON variables and press Enter:</Text>
+          <Text color={theme.accent}>Paste JSON variables and press Enter:</Text>
           <TextInput
             value={jsonVarsInput}
             onChange={setJsonVarsInput}
@@ -137,7 +137,7 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
         </>
       ) : stage === 'form' ? (
         <>
-          <Text>{fields[index]?.label} (default: {fields[index]?.default}):</Text>
+          <Text color={theme.accent}>{fields[index]?.label} (default: {fields[index]?.default}):</Text>
           <TextInput
             value={input || ''}
             onChange={setInput}
@@ -146,11 +146,11 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
         </>
       ) : stage === 'display' ? (
         <>
-          <Text bold>=== COPY PROMPT TO LLM ===</Text>
+          <Text bold color={theme.highlight}>=== COPY PROMPT TO LLM ===</Text>
           <Box marginY={1} borderStyle="round" padding={1} flexDirection="column">
-            <Text>{promptText}</Text>
+            <Text color={theme.textPrimary}>{promptText}</Text>
           </Box>
-          <Text>Press any key to paste JSON playlist</Text>
+          <Text color={theme.accent}>Press any key to paste JSON playlist</Text>
         </>
       ) : stage === 'input' ? (
         <>
