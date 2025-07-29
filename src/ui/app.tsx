@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Box, Text, useApp } from 'ink';
 import SelectInput from 'ink-select-input';
 import PlaylistPicker from './PlaylistPicker.js';
 import PlaylistMaker from './PlaylistMaker.js';
+import { ThemeProvider, ThemeContext } from './ThemeProvider.js';
 
 // StreamPlaylistInk and CreatePlaylistInk handle UI flows
 
@@ -11,11 +12,20 @@ type MenuItem = { label: string; value: 'llm' | 'stream' | 'exit' };
 
 // Component to stream playlists using Ink for selection
 const App: React.FC = () => {
+  const theme = useContext(ThemeContext);
   const { exit } = useApp();
   const [mode, setMode] = useState<'menu'|'stream'|'llm'>('menu');
   // Route modes
-  if (mode === 'stream') return <PlaylistPicker onDone={() => setMode('menu')} />;
-  if (mode === 'llm') return <PlaylistMaker onDone={() => setMode('menu')} />;
+  if (mode === 'stream') return (
+    <ThemeProvider>
+      <PlaylistPicker onDone={() => setMode('menu')} />
+    </ThemeProvider>
+  );
+  if (mode === 'llm') return (
+    <ThemeProvider>
+      <PlaylistMaker onDone={() => setMode('menu')} />
+    </ThemeProvider>
+  );
 
   const items: MenuItem[] = [
     { label: 'Generate playlist via LLM', value: 'llm' },
@@ -35,10 +45,12 @@ const App: React.FC = () => {
    };
 
    return (
-    <Box flexDirection="column">
-      <Text>Select an action:</Text>
-      <SelectInput items={items} onSelect={handleSelect} />
-    </Box>
+    <ThemeProvider>
+      <Box flexDirection="column">
+        <Text color={theme.accent}>Select an action:</Text>
+        <SelectInput items={items} onSelect={handleSelect} />
+      </Box>
+    </ThemeProvider>
   );
 }
 

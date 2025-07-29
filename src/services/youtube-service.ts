@@ -1,6 +1,7 @@
 import youtubedl from 'youtube-dl-exec';
 import { Readable } from 'stream';
-import { createWriteStream } from 'fs';
+import { spawn } from 'child_process';
+import type { ChildProcess } from 'child_process';
 
 export interface YouTubeVideo {
   id: string;
@@ -9,6 +10,7 @@ export interface YouTubeVideo {
 }
 
 export class YouTubeService {
+  private currentProcess?: ChildProcess;
   /** Ensure yt-dlp binary is installed and on PATH */
   async healthCheck(): Promise<void> {
     try {
@@ -23,7 +25,6 @@ export class YouTubeService {
     }
   }
   async search(query: string): Promise<YouTubeVideo | null> {
-    console.log(`[YouTubeService] Searching YouTube for: "${query}"`);
     let results: any;
     try {
         results = await youtubedl.exec(query, {
@@ -45,7 +46,6 @@ export class YouTubeService {
       return null;
     }
     const video = parsedResults.entries[0];
-    console.log(`[YouTubeService] Found video: ${video.title} (${video.id})`);
     return {
       id: video.id ?? '',
       title: video.title ?? '',
@@ -54,43 +54,46 @@ export class YouTubeService {
   }
 
   async getAudioStream(url: string): Promise<Readable> {
-    // Use yt-dlp to select best audio-only format and return a readable stream
-    let subprocces: any;
-    try {
-      // Stream the full best audio track (no ext filter to avoid segment cutoffs)
-      subprocces = youtubedl.exec(url, {
-        output: '-',
-        format: 'bestaudio/best', // full audio-only best format
-        quiet: true,
-        noPlaylist: true,       // ensure full video, not playlist
-        hlsPreferNative: true,   // use native HLS handling to avoid segment cutoff
-        hlsUseMpegts: true       // stream in MPEG-TS to keep continuous audio
- }, { stdio: ['ignore', 'pipe', 'pipe'] });
-      // Debug logging for the yt-dlp process and stream data
-      console.log(`[YouTubeService] yt-dlp started (pid=${subprocces.pid})`);
-      // DEBUG: pipe full stdout to file for download verification
-      const debugFile = createWriteStream('yt_debug_audio.raw');
-      subprocces.stdout.pipe(debugFile);
-      debugFile.on('finish', () => {
-        console.log('[YouTubeService] DEBUG: full audio download saved to yt_debug_audio.raw');
-      });
-      subprocces.stderr?.on('data', (chunk: Buffer) => {
-        console.error(`[YouTubeService] yt-dlp stderr: ${chunk.toString()}`);
-      });
-      if (subprocces.stdout) {
-        subprocces.stdout.on('data', (chunk: Buffer) => {
-          console.log(`[YouTubeService] yt-dlp stdout chunk: ${chunk.length} bytes`);
-        });
-      }
-    } catch (err: any) {
-      if (err.code === 'ENOENT') {
-        throw new Error('yt-dlp binary not found. Please install yt-dlp (e.g., pip install yt-dlp) or ensure it is on your PATH');
-      }
-      throw err;
-    }
-    if (!subprocces.stdout) {
+    // Spawn yt-dlp directly for continuous audio streaming
+    const args = [
+      url,
+      '-o', '-',
+      '-f', 'bestaudio/best',
+      '--quiet',
+      '--no-playlist',
+      '--hls-prefer-native',
+      '--hls-use-mpegts'
+    ];
+    const proc = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    this.currentProcess = proc;
+    // Suppress errors on subprocess and its stderr
+    proc.on('error', () => {});
+    proc.stderr.on('error', () => {});
+    proc.on('close', () => { this.currentProcess = undefined; });
+    const stream = proc.stdout;
+    if (!stream) {
       throw new Error('Failed to create audio stream');
     }
-    return subprocces.stdout;
+    // Suppress stream errors (e.g., broken pipe) after cancellation
+    stream.on('error', () => {});
+    return stream;
+  }
+
+  /** Cancel any in-flight yt-dlp audio stream */
+  public cancelStream(): void {
+    if (this.currentProcess) {
+      const proc = this.currentProcess;
+      // first try to interrupt gracefully
+      proc.kill('SIGINT');
+      // if still running, try termination
+      setTimeout(() => { if (!proc.killed) proc.kill('SIGTERM'); }, 100);
+      // if still running after timeout, force kill
+      setTimeout(() => { if (!proc.killed) proc.kill('SIGKILL'); }, 500);
+      this.currentProcess = undefined;
+    }
+  }
+  /** Cleanup the YouTubeService, cancelling any active process */
+  public destroy(): void {
+    this.cancelStream();
   }
 }

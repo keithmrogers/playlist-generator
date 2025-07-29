@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits, VoiceBasedChannel } from 'discord.js';
 import { joinVoiceChannel, createAudioPlayer, AudioPlayer, AudioResource, VoiceConnection, AudioPlayerStatus, getVoiceConnection } from '@discordjs/voice';
 
 export class DiscordService {
+  private lastPlayerStatus?: AudioPlayerStatus;
   private client: Client;
   private player?: AudioPlayer;
   private channelId: string;
@@ -54,11 +55,32 @@ export class DiscordService {
   async playResource(resource: AudioResource): Promise<void> {
     if (!this.player) {
       this.player = createAudioPlayer();
+      // track audio player state
+      this.player.on('stateChange', (_old, newState) => {
+        this.lastPlayerStatus = newState.status;
+      });
       this.getVoiceConnection()?.subscribe(this.player);
     };
 
     this.player.play(resource);
-    await new Promise<void>(resolve => this.player!.once(AudioPlayerStatus.Idle, resolve));
+    // wait for Idle or suppress errors
+    await new Promise<void>((resolve) => {
+      const onIdle = () => {
+        cleanup();
+        resolve();
+      };
+      const onError = (error: Error) => {
+        console.warn('AudioPlayer stream error suppressed:', error.message);
+        cleanup();
+        resolve();
+      };
+      const cleanup = () => {
+        this.player!.off(AudioPlayerStatus.Idle, onIdle);
+        this.player!.off('error', onError as any);
+      };
+      this.player!.once(AudioPlayerStatus.Idle, onIdle);
+      this.player!.once('error', onError as any);
+    });
   }
 
   /** Pause the current audio resource */
@@ -82,6 +104,10 @@ export class DiscordService {
   destroy(): void {
     this.getVoiceConnection()?.destroy();
     this.client.destroy();
+  }
+  /** Get the last known AudioPlayer status */
+  public getPlayerStatus(): AudioPlayerStatus | undefined {
+    return this.lastPlayerStatus;
   }
   /** returns whether the Discord client is ready and the voice connection is established */
   public healthCheck(): { clientReady: boolean; connectionStatus?: string; connectionPing?: number } {

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { createAudioResource } from '@discordjs/voice';
+import { createAudioResource, AudioPlayerStatus } from '@discordjs/voice';
 import { DiscordService } from '../services/discord-service.js';
 import { Track } from '../services/playlist-service.js';
 import { YouTubeService } from '../services/youtube-service.js';
+import { ThemeContext } from './ThemeProvider.js';
 
 interface StreamPlayerProps {
   tracks: Track[];
@@ -11,86 +12,131 @@ interface StreamPlayerProps {
 }
 
 const StreamPlayer: React.FC<StreamPlayerProps> = ({ tracks, onDone }) => {
+  // consume global theme colors
+  const theme = useContext(ThemeContext);
+
+  // ref to YouTubeService to cancel underlying child process
+  typeof YouTubeService;
+  const ytServiceRef = useRef<YouTubeService>(new YouTubeService());
+  // helper to search YouTube and create an AudioResource
+  const fetchResource = async (query: string) => {
+    const yt = ytServiceRef.current;
+    const video = await yt.search(query);
+    if (!video) throw new Error(`No YouTube result for ${query}`);
+    const stream = await yt.getAudioStream(video.url);
+    return createAudioResource(stream, { metadata: { title: video.title, id: video.id } });
+  };
+  // fetch an AudioResource for a track by its index
+  const getAudioResourceByIndex = (index: number) => {
+    const track = tracks[index]!;
+    const query = `${track.name} ${track.artists.join(' ')}`;
+    return fetchResource(query);
+  };
+
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [elapsed, setElapsed] = useState(0);
   const [discord, setDiscord] = useState<DiscordService | null>(null);
+  const [playerState, setPlayerState] = useState<AudioPlayerStatus | undefined>(undefined);
+  // track previous playerState to detect real end-of-playback
+  const prevPlayerStateRef = useRef<AudioPlayerStatus | undefined>(undefined);
 
   useEffect(() => {
-    console.log('[StreamPlayer] mounting, initializing Discord connection');
     let ds: DiscordService | null = null;
     (async () => {
-      console.log('[StreamPlayer] calling DiscordService.init()');
       ds = new DiscordService(process.env['DISCORD_TOKEN']!, process.env['DISCORD_VOICE_CHANNEL_ID']!);
       await ds.init();
       await ds.connectVoice();
-      console.log('[StreamPlayer] Discord connected');
       setDiscord(ds);
     })();
     return () => {
-      console.log('[StreamPlayer] unmounting, destroying Discord connection');
+      // cleanup DiscordService and YouTubeService
       ds?.destroy();
+      ytServiceRef.current.destroy();
     };
   }, []);
 
   useInput((input) => {
-    console.log(`[StreamPlayer] key input: ${input}`);
     if (!discord) return;
     const k = input.toLowerCase();
     if (k === 'p') {
-      console.log('[StreamPlayer] pause command');
       discord.pause();
     }
     if (k === 'r') {
-      console.log('[StreamPlayer] resume command');
       discord.resume();
     }
     if (k === 's') {
-      console.log('[StreamPlayer] skip command');
       discord.stop();
     }
   });
 
+  // unified next-track logic: advance only when going from Playing to Idle
   useEffect(() => {
-    if (!discord) return;
-    let cancelled = false;
-    const runPlayback = async () => {
-      console.log('[StreamPlayer] start playback loop');
-      for (let i = 0; i < tracks.length; i++) {
-        if (cancelled) break;
-        setCurrentIndex(i);
-        setElapsed(0);
-        const track = tracks[i]!;
-        console.log(`[StreamPlayer] playing track ${i}: ${track.name}`);
-        try {
-          const yt = new YouTubeService();
-          const video = await yt.search(`${track.name} ${track.artists.join(' ')}`);
-          console.log(`[StreamPlayer] YouTube result: ${video?.title}`);
-          if (video) {
-            const stream = await yt.getAudioStream(video.url);
-            const resource = createAudioResource(stream);
-            console.log('[StreamPlayer] playing audio resource');
-            await discord.playResource(resource);
-            console.log(`[StreamPlayer] finished track ${i}`);
-          }
-        } catch (err) {
-          console.error(`[StreamPlayer] error on track ${i}:`, err);
-        }
-      }
-      if (!cancelled) {
-        console.log('[StreamPlayer] playback complete, calling onDone');
+    const prev = prevPlayerStateRef.current;
+    if (playerState === AudioPlayerStatus.Idle && prev === AudioPlayerStatus.Playing) {
+      if (currentIndex + 1 < tracks.length) {
+        setCurrentIndex(currentIndex + 1);
+      } else {
         onDone();
       }
+    }
+    prevPlayerStateRef.current = playerState;
+  }, [playerState]);
+
+  // play current track and move to next on Idle
+  useEffect(() => {
+    if (!discord) return;
+    const playTrack = async () => {
+      try {
+        const resource = await getAudioResourceByIndex(currentIndex);
+        await discord.playResource(resource);
+      } catch (err) {
+        console.error(`[StreamPlayer] error on track ${currentIndex}:`, err);
+      }
     };
-    runPlayback();
-    return () => { cancelled = true; };
-  }, [discord]);
+    playTrack();
+  }, [discord, currentIndex]);
+
+  useEffect(() => {
+    // poll DiscordService for playerState and update loading flag
+    if (!discord) return;
+    const interval = setInterval(() => {
+      const state = discord.getPlayerStatus();
+      if (state !== playerState) {
+        setPlayerState(state);
+      }
+    }, 200);
+    return () => clearInterval(interval);
+  }, [discord, playerState]);
+
+  // derive a friendly status message from the player state
+  const statusMessage = React.useMemo(() => {
+    if (!playerState) return 'Connecting...';
+    switch (playerState) {
+      case AudioPlayerStatus.Buffering:
+        return 'Buffering audio...';
+      case AudioPlayerStatus.Playing:
+        return '';
+      case AudioPlayerStatus.Paused:
+        return 'Paused';
+      case AudioPlayerStatus.Idle:
+        return 'Ready to play';
+      default:
+        return `Status: ${playerState}`;
+    }
+  }, [playerState]);
 
   if (currentIndex < tracks.length) {
     return (
       <Box flexDirection="column">
-        <Text>Controls: (p)ause, (r)esume, (s)kip</Text>
-        <Text>Now playing: {tracks[currentIndex]?.name}</Text>
-        <Text>Elapsed: {elapsed}s</Text>
+        {statusMessage && (
+          <Text color={theme.accent}>
+            {statusMessage}
+            {!statusMessage.match(/Buffering|Connecting/) && `: ${tracks[currentIndex]?.name}`}
+          </Text>
+        )}
+        {playerState === AudioPlayerStatus.Playing && (
+          <Text color={theme.button}>Controls: (p)ause, (r)esume, (s)kip</Text>
+        )}
+        <Text color={theme.highlight}>Now playing: {tracks[currentIndex]?.name}</Text>
       </Box>
     );
   }

@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useContext } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import fs from 'fs';
 import path from 'path';
 import { CampaignConfig, PromptService, PromptTemplate } from '../services/prompt-service.js';
 import { Playlist, PlaylistService } from '../services/playlist-service.js';
+import { ThemeContext } from './ThemeProvider.js';
 
 // Initialize prompt service once
 const templates: PromptTemplate[] = JSON.parse(
@@ -20,6 +21,7 @@ interface PlaylistMakerProps {
 }
 
 const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
+  const theme = useContext(ThemeContext);
   const fields = [
     { name: 'numberOfTracks', label: 'Number of tracks?', default: '10' },
     { name: 'moods', label: 'Target moods (comma-separated)?', default: '' },
@@ -104,20 +106,24 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
     <Box flexDirection="column">
       {stage === 'form' ? (
         <>
-          <Box><Text>{fields[index]?.label}</Text></Box>
-          <TextInput value={input || ''} onChange={setInput} onSubmit={handleSubmitForm} />
+          <Box><Text color={theme.accent}>{fields[index]?.label}</Text></Box>
+          <TextInput
+            value={input || ''}
+            onChange={setInput}
+            onSubmit={handleSubmitForm}
+          />
         </>
       ) : stage === 'display' ? (
         <>
-          <Text bold>=== COPY PROMPT TO LLM ===</Text>
-          <Box marginY={1}><Text>{promptText}</Text></Box>
-          <Text>Press any key to input playlist JSON</Text>
+          <Text color={theme.highlight} bold>=== COPY PROMPT TO LLM ===</Text>
+          <Box marginY={1}><Text color={theme.textPrimary}>{promptText}</Text></Box>
+          <Text color={theme.accent}>Press any key to input playlist JSON</Text>
         </>
       ) : (
         <>
-          <Text>Paste playlist JSON and press Enter:</Text>
-          <Box borderStyle="round" padding={1} flexDirection="column">
-            <Text>{displayBuffer}</Text>
+          <Text color={theme.accent}>Paste playlist JSON and press Enter:</Text>
+          <Box borderStyle="round" padding={1} flexDirection="column" borderColor={theme.surface}>
+            <Text color={theme.textSecondary}>{displayBuffer}</Text>
           </Box>
         </>
       )}
