@@ -1,0 +1,102 @@
+{
+  "samples": [
+    {
+      "name": "Dungeon Exploration",
+      "variables": {
+        "numberOfTracks": 10,
+        "moods": "mysterious, tense",
+        "sceneType": "dungeon exploration",
+        "tempo": "moderate",
+        "intensity": "medium",
+        "environment": "underground subway tunnels",
+        "instrumentationFocus": "ambient synth, strings",
+        "narrativeCue": "investigation",
+        "trackLength": "standard"
+      }
+    },
+    {
+      "name": "Combat Encounter",
+      "variables": {
+        "numberOfTracks": 8,
+        "moods": "energetic, aggressive",
+        "sceneType": "combat",
+        "tempo": "fast",
+        "intensity": "high",
+        "environment": "downtown streets",
+        "instrumentationFocus": "percussion, brass",
+        "narrativeCue": "action",
+        "trackLength": "short"
+      }
+    },
+    {
+      "name": "Mystical Social",
+      "variables": {
+        "numberOfTracks": 6,
+        "moods": "calm, curious",
+        "sceneType": "social interaction",
+        "tempo": "slow",
+        "intensity": "low",
+        "environment": "city plaza",
+        "instrumentationFocus": "harp, woodwinds",
+        "narrativeCue": "roleplay",
+        "trackLength": "standard"
+      }
+    },
+    {
+      "name": "Stealth Mission",
+      "variables": {
+        "numberOfTracks": 5,
+        "moods": "tense, quiet",
+        "sceneType": "stealth",
+        "tempo": "slow",
+        "intensity": "medium",
+        "environment": "narrow alleyways",
+        "instrumentationFocus": "ambient, low synth",
+        "narrativeCue": "sneaking",
+        "trackLength": "short"
+      }
+    },
+    {
+      "name": "Boss Battle",
+      "variables": {
+        "numberOfTracks": 7,
+        "moods": "epic, dramatic",
+        "sceneType": "boss encounter",
+        "tempo": "fast",
+        "intensity": "high",
+        "environment": "city hall chamber",
+        "instrumentationFocus": "orchestral, choir",
+        "narrativeCue": "climax",
+        "trackLength": "extended"
+      }
+    },
+    {
+      "name": "City Park Stroll",
+      "variables": {
+        "numberOfTracks": 5,
+        "moods": "cheerful, relaxed",
+        "sceneType": "strolling",
+        "tempo": "moderate",
+        "intensity": "low",
+        "environment": "city park walkways",
+        "instrumentationFocus": "acoustic guitar, piano",
+        "narrativeCue": "relaxation",
+        "trackLength": "standard"
+      }
+    },
+    {
+      "name": "Sunset Celebration",
+      "variables": {
+        "numberOfTracks": 6,
+        "moods": "hopeful, celebratory",
+        "sceneType": "celebration",
+        "tempo": "moderate",
+        "intensity": "medium",
+        "environment": "city rooftop",
+        "instrumentationFocus": "brass, synth",
+        "narrativeCue": "victory",
+        "trackLength": "standard"
+      }
+    }
+  ]
+}

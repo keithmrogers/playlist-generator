@@ -1,11 +1,24 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 
+export interface AudioFeatures {
+  danceability: number;
+  energy: number;
+  tempo: number;
+  valence: number;
+  acousticness: number;
+  instrumentalness: number;
+  liveness: number;
+  speechiness: number;
+  [key: string]: any;
+}
+
 export interface Track {
   name: string;
   artists: string[];
   uri?: string;
   popularity?: number;
+  audioFeatures?: AudioFeatures;
 }
 
 export interface Playlist {
