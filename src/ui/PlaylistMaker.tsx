@@ -37,15 +37,27 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
   const [values, setValues] = useState<Record<string,string>>({});
   const [promptText, setPromptText] = useState<string>('');
   const [stage, setStage] = useState<'choose'|'form'|'display'|'input'|'jsonVars'>('choose');
-  const [jsonVarsInput, setJsonVarsInput] = useState<string>('');
   const jsonBuffer = useRef<string>('');
   // State for displaying buffer content (for playlist JSON and vars)
   const [displayBuffer, setDisplayBuffer] = useState<string>('');
+  // State and buffer for JSON vars manual paste handling
+  const [displayJsonVarsBuffer, setDisplayJsonVarsBuffer] = useState<string>('');
+  const jsonVarsBuffer = useRef<string>('');
 
   useInput((input, key) => {
     if (stage === 'choose') {
       if (input.toLowerCase() === 'j') setStage('jsonVars');
+      else if (input.toLowerCase() === 's') setStage('input');
       else setStage('form');
+    } else if (stage === 'jsonVars') {
+      if (key.return) {
+        handleSubmitVars(jsonVarsBuffer.current);
+        jsonVarsBuffer.current = '';
+        setDisplayJsonVarsBuffer('');
+      } else {
+        jsonVarsBuffer.current += input;
+        setDisplayJsonVarsBuffer(jsonVarsBuffer.current);
+      }
     } else if (stage === 'input') {
       if (key.return) {
         handleSubmitJson(jsonBuffer.current);
@@ -93,11 +105,10 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
       const spotifyService = new (await import('../services/spotify-service.js')).SpotifyService(
         process.env['SPOTIFY_CLIENT_ID']!, process.env['SPOTIFY_CLIENT_SECRET']!
       );
-      // use numberOfTracks as max after scrubbing
-      const maxTracks = parseInt(values['numberOfTracks']!);
+      const maxTracks = values['numberOfTracks'] ? parseInt(values['numberOfTracks']!) : 12;
       const scrubbed = await spotifyService.scrubPlaylist(playlist, maxTracks);
       await ps.savePlaylist(scrubbed);
-      console.log(`Playlist saved: ${scrubbed.name}`);
+
     } catch (err) {
       console.error('Error scrubbing playlist:', err);
       return;
@@ -124,16 +135,14 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
     <Box flexDirection="column">
       {stage === 'choose' ? (
         <>
-          <Text color={theme.accent}>Press 'j' to input JSON variables for quick playlist making, or any other key for interactive mode</Text>
+          <Text color={theme.accent}>Press 'j' to input JSON variables for quick playlist making, 's' to skip to pasting JSON, or any other key for interactive mode</Text>
         </>
       ) : stage === 'jsonVars' ? (
         <>
           <Text color={theme.accent}>Paste JSON variables and press Enter:</Text>
-          <TextInput
-            value={jsonVarsInput}
-            onChange={setJsonVarsInput}
-            onSubmit={() => handleSubmitVars(jsonVarsInput)}
-          />
+          <Box borderStyle="round" padding={1} flexDirection="column" borderColor={theme.surface}>
+            <Text>{displayJsonVarsBuffer}</Text>
+          </Box>
         </>
       ) : stage === 'form' ? (
         <>

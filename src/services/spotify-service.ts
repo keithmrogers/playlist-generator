@@ -50,7 +50,6 @@ export class SpotifyService {
    * Clean a playlist by removing duplicates, invalid URIs, and unavailable tracks
    */
   async scrubPlaylist(playlist: { name: string; tracks: Track[] }, maxTracks?: number): Promise<{ name: string; tracks: Track[] }> {
-    console.log(`SpotifyService: scrubbing playlist "${playlist.name}" with ${playlist.tracks.length} track(s)`);
     await this.authorize();
     const seen = new Set<string>();
     const cleaned: Track[] = [];
@@ -84,7 +83,6 @@ export class SpotifyService {
         continue;
       }
     }
-    console.log(`SpotifyService: scrub complete, ${cleaned.length} track(s) available`);
     // slice to maxTracks if provided
     const finalTracks = maxTracks !== undefined ? cleaned.slice(0, maxTracks) : cleaned;
     // log percentage of tracks retained after scrubbing
