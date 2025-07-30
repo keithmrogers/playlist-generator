@@ -6,6 +6,7 @@ import { CampaignConfig, PromptService, PromptTemplate } from '../services/promp
 import { Playlist, PlaylistService } from '../services/playlist-service.js';
 import { TagService } from '../services/tag-service.js';
 import TextInput from 'ink-text-input';
+import {ThemeContext} from './ThemeProvider.js';
 
 // Initialize prompt service once
 const templates: PromptTemplate[] = JSON.parse(
