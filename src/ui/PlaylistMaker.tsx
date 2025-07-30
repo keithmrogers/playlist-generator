@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { CampaignConfig, PromptService, PromptTemplate } from '../services/prompt-service.js';
 import { Playlist, PlaylistService } from '../services/playlist-service.js';
+import { TagService } from '../services/tag-service.js';
 import TextInput from 'ink-text-input';
 
 // Initialize prompt service once
@@ -107,6 +108,14 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
       );
       const maxTracks = values['numberOfTracks'] ? parseInt(values['numberOfTracks']!) : 12;
       const scrubbed = await spotifyService.scrubPlaylist(playlist, maxTracks);
+      // fetch and assign tags on each track
+      const tagService = new TagService();
+      const tagsMap = await tagService.getTopTagsForTracks(scrubbed.tracks);
+      scrubbed.tracks = scrubbed.tracks.map(track => {
+        // key off the full Spotify URI
+        const key = track.uri ?? '';
+        return { ...track, tags: tagsMap[key] || [] };
+      });
       await ps.savePlaylist(scrubbed);
 
     } catch (err) {

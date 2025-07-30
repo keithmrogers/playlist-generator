@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { DiscordService } from './discord-service.js';
 import { YouTubeService } from './youtube-service.js';
+import { TagService } from './tag-service.js';
 import 'dotenv/config';
 
 export class HealthService {
@@ -19,8 +20,9 @@ export class HealthService {
     const spotifyOk = await this.checkSpotify();
     const discordOk = await this.checkDiscord();
     const ytOk = await this.checkYouTube();
+    const tagsOk = await this.checkTagService();
     const configOk = await this.checkCampaignConfig();
-    return spotifyOk && discordOk && ytOk && configOk;
+    return spotifyOk && discordOk && ytOk && tagsOk && configOk;
   }
 
   private async checkSpotify(): Promise<boolean> {
@@ -87,6 +89,20 @@ export class HealthService {
       return true;
     } catch (err) {
       console.error('Campaign config: ERROR', err);
+      return false;
+    }
+  }
+  /**
+   * Health check for Last.fm TagService
+   */
+  private async checkTagService(): Promise<boolean> {
+    console.log('Checking Last.fm API...');
+    try {
+      const tagSvc = new TagService();
+      const ok = await tagSvc.healthCheck();
+      return ok;
+    } catch (err) {
+      console.error('Last.fm: ERROR', err);
       return false;
     }
   }

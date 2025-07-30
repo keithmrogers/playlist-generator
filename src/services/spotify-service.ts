@@ -57,7 +57,6 @@ export class SpotifyService {
       let uri = t.uri;
       // if no valid URI, search Spotify by name+artists
       if (!uri?.startsWith('spotify:track:')) {
-        console.log(`Invalid or missing URI, searching for track: ${t.name}`);
         const q = `track:${t.name} artist:${t.artists.join(' ')}`;
         const res = await this.searchTracks(q, 1);
         if (!res.tracks.length) continue;
@@ -66,7 +65,6 @@ export class SpotifyService {
         uri = found.uri;
       }
       if (seen.has(uri)) continue;
-      console.log(`Adding unique track URI: ${uri}`);
       seen.add(uri);
       const id = uri.split(':').pop();
       if (!id) continue;

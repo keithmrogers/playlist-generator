@@ -18,7 +18,7 @@ export interface Track {
   artists: string[];
   uri?: string;
   popularity?: number;
-  audioFeatures?: AudioFeatures;
+  tags?: string[];
 }
 
 export interface Playlist {
