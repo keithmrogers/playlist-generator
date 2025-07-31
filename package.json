@@ -9,8 +9,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch",
-    "test": "jest"
+    "dev": "tsc --watch"
   },
   "files": [
     "dist"
@@ -32,13 +31,10 @@
   "devDependencies": {
     "@sindresorhus/tsconfig": "^7.0.0",
     "@types/ink-select-input": "^3.0.5",
-    "@types/jest": "^30.0.0",
     "@types/node": "^24.1.0",
     "@types/node-fetch": "^2.6.13",
     "@types/react": "^19.1.8",
     "@types/spotify-web-api-node": "^5.0.11",
-    "jest": "^30.0.5",
-    "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }
