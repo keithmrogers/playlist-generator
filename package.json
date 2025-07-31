@@ -9,7 +9,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "test": "jest --passWithNoTests"
   },
   "files": [
     "dist"
@@ -26,6 +27,7 @@
     "node-fetch": "^3.3.2",
     "react": "^19.1.0",
     "spotify-web-api-node": "^5.0.2",
+    "ts-jest": "^29.4.0",
     "youtube-dl-exec": "^3.0.22"
   },
   "devDependencies": {
