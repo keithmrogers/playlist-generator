@@ -2,19 +2,32 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { createAudioResource, AudioPlayerStatus } from '@discordjs/voice';
 import { DiscordService } from '../services/discord-service.js';
-import { Track } from '../services/playlist-service.js';
+import { Playlist, Track } from '../services/playlist-service.js';
 import { YouTubeService } from '../services/youtube-service.js';
 import { ThemeContext } from './ThemeProvider.js';
+import PlaylistWithTags from './PlaylistWithTags.js';
+
+// Fisher–Yates shuffle utility
+function shuffleArray<T>(array: T[]): T[] {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = array[i]!;
+    array[i] = array[j]!;
+    array[j] = tmp;
+  }
+  return array;
+}
 
 interface StreamPlayerProps {
-  tracks: Track[];
+  playlist: Playlist;
   onDone: () => void;
 }
 
-const StreamPlayer: React.FC<StreamPlayerProps> = ({ tracks, onDone }) => {
+const StreamPlayer: React.FC<StreamPlayerProps> = ({ playlist, onDone }) => {
   // consume global theme colors
   const theme = useContext(ThemeContext);
-
+  // shuffle tracks once on load
+  const [tracks] = useState<Track[]>(() => shuffleArray([...playlist.tracks]));
   // ref to YouTubeService to cancel underlying child process
   typeof YouTubeService;
   const ytServiceRef = useRef<YouTubeService>(new YouTubeService());
@@ -126,7 +139,8 @@ const StreamPlayer: React.FC<StreamPlayerProps> = ({ tracks, onDone }) => {
 
   if (currentIndex < tracks.length) {
     return (
-      <Box flexDirection="column">
+      <Box flexDirection="column">        
+        <PlaylistWithTags playlist={playlist} currentIndex={currentIndex} />
         {statusMessage && (
           <Text color={theme.accent}>
             {statusMessage}
@@ -136,7 +150,6 @@ const StreamPlayer: React.FC<StreamPlayerProps> = ({ tracks, onDone }) => {
         {playerState === AudioPlayerStatus.Playing && (
           <Text color={theme.button}>Controls: (p)ause, (r)esume, (s)kip</Text>
         )}
-        <Text color={theme.highlight}>Now playing: {tracks[currentIndex]?.name}</Text>
       </Box>
     );
   }

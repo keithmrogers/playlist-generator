@@ -6,6 +6,9 @@ if (!isHealthy) {
   process.exit(1);
 }
 
+// clear console on successful health check
+console.clear();
+
 // dynamic import = proper ESM load of Ink
 import React from 'react';
 const { render } = await import('ink');
