@@ -4,7 +4,7 @@ import SelectInput from 'ink-select-input';
 import fs from 'fs';
 import path from 'path';
 import StreamPlayer from './StreamPlayer.js';
-import { Playlist, Track } from '../services/playlist-service.js';
+import { Playlist } from '../services/playlist-service.js';
 import { ThemeContext } from './ThemeProvider.js';
 
 interface PlaylistPickerProps {
@@ -23,7 +23,7 @@ const PlaylistPicker: React.FC<PlaylistPickerProps> = ({ onDone }) => {
     );
   }
 
-  const [selectedTracks, setSelectedTracks] = useState<Track[] | null>(null);
+  const [playlist, setPlaylist] = useState<Playlist | null>(null);
   // Custom renderer that colors playlist name (green when selected) and tags (cyan)
   const PlaylistItem = ({ label, isSelected = false }: { label: string; isSelected?: boolean }) => {
     // split label into name and tags portion
@@ -55,11 +55,11 @@ const PlaylistPicker: React.FC<PlaylistPickerProps> = ({ onDone }) => {
     const playlist: Playlist = JSON.parse(
       fs.readFileSync(path.join(process.cwd(), 'playlists', item.value), 'utf-8')
     );
-    setSelectedTracks(playlist.tracks);
+    setPlaylist(playlist);
   };
 
-  if (selectedTracks) {
-    return <StreamPlayer tracks={selectedTracks} onDone={onDone} />;
+  if (playlist) {
+    return <StreamPlayer playlist={playlist} onDone={onDone} />;
   }
 
   return (

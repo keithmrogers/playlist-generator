@@ -43,12 +43,18 @@ const App: React.FC = () => {
          return;
      }
    };
+  // Custom renderer to apply theme to menu items
+  const MenuItemComponent: React.FC<{label: string; isSelected?: boolean}> = ({ label, isSelected }) => {
+    const theme = useContext(ThemeContext);
+    const color = isSelected ? theme.success : theme.textPrimary;
+    return <Text color={color}>{label}</Text>;
+  };
 
    return (
     <ThemeProvider>
       <Box flexDirection="column">
         <Text color={theme.accent}>Select an action:</Text>
-        <SelectInput items={items} onSelect={handleSelect} />
+        <SelectInput items={items} onSelect={handleSelect} itemComponent={MenuItemComponent} />
       </Box>
     </ThemeProvider>
   );
