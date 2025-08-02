@@ -5,6 +5,7 @@ import { DiscordService } from './discord-service.js';
 import { YouTubeService } from './youtube-service.js';
 import { TagService } from './tag-service.js';
 import 'dotenv/config';
+import { PLAYLIST_FOLDER } from '../config.js';
 
 export class HealthService {
   private spotifyApi: SpotifyWebApi;
@@ -82,7 +83,7 @@ export class HealthService {
 
   private async checkCampaignConfig(): Promise<boolean> {
     console.log('Checking campaign config file...');
-    const configPath = path.join(process.cwd(), 'config/campaign.json');
+    const configPath = path.join(PLAYLIST_FOLDER, 'config/campaign.json');
     try {
       fs.accessSync(configPath);
       console.log('Campaign config: OK');

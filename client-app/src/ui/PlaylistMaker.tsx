@@ -1,4 +1,4 @@
-import React, { useState, useRef, useContext } from 'react';
+import React, { useState, useRef, useContext, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import fs from 'fs';
 import path from 'path';
@@ -7,13 +7,15 @@ import { Playlist, PlaylistService } from '../services/playlist-service.js';
 import { TagService } from '../services/tag-service.js';
 import TextInput from 'ink-text-input';
 import {ThemeContext} from './ThemeProvider.js';
+import { PLAYLIST_FOLDER } from '../config.js';
+import clipboardy from 'clipboardy';
 
 // Initialize prompt service once
 const templates: PromptTemplate[] = JSON.parse(
   fs.readFileSync(path.join(process.cwd(), './templates/promptTemplates.json'), 'utf-8')
 );
 const campaignConfig: CampaignConfig = JSON.parse(
-  fs.readFileSync(path.join(process.cwd(), './config/campaign.json'), 'utf-8')
+  fs.readFileSync(path.join(PLAYLIST_FOLDER, './config/campaign.json'), 'utf-8')
 );
 const promptService = new PromptService(templates, campaignConfig);
 
@@ -39,6 +41,16 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
   const [values, setValues] = useState<Record<string,string>>({});
   const [promptText, setPromptText] = useState<string>('');
   const [stage, setStage] = useState<'choose'|'form'|'display'|'input'|'jsonVars'>('choose');
+  // Copy generated prompt to clipboard when displaying
+  useEffect(() => {
+    if (stage === 'display') {
+      try {
+        clipboardy.writeSync(promptText);
+      } catch (err) {
+        console.error('Failed to copy prompt to clipboard:', err);
+      }
+    }
+  }, [stage, promptText]);
   const jsonBuffer = useRef<string>('');
   // State for displaying buffer content (for playlist JSON and vars)
   const [displayBuffer, setDisplayBuffer] = useState<string>('');
@@ -101,8 +113,7 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
     if (!playlist.name || !Array.isArray(playlist.tracks)) {
       console.error('JSON must have name and tracks'); return;
     }
-    const playlistsDir = path.join(process.cwd(), 'playlists');
-    const ps = new PlaylistService(playlistsDir);
+    const ps = new PlaylistService(PLAYLIST_FOLDER);
     try {
       const spotifyService = new (await import('../services/spotify-service.js')).SpotifyService(
         process.env['SPOTIFY_CLIENT_ID']!, process.env['SPOTIFY_CLIENT_SECRET']!
@@ -169,7 +180,7 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
           <Box marginY={1} borderStyle="round" padding={1} flexDirection="column">
             <Text color={theme.textPrimary}>{promptText}</Text>
           </Box>
-          <Text color={theme.accent}>Press any key to paste JSON playlist</Text>
+          <Text color={theme.accent}>Prompt copied to clipboard. Press any key to paste JSON playlist</Text>
         </>
       ) : stage === 'input' ? (
         <>
