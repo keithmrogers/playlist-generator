@@ -6,6 +6,7 @@ import path from 'path';
 import StreamPlayer from './StreamPlayer.js';
 import { Playlist } from '../services/playlist-service.js';
 import { ThemeContext } from './ThemeProvider.js';
+import { PLAYLIST_FOLDER } from '../config.js';
 
 interface PlaylistPickerProps {
   onDone: () => void;
@@ -13,7 +14,7 @@ interface PlaylistPickerProps {
 
 const PlaylistPicker: React.FC<PlaylistPickerProps> = ({ onDone }) => {
   const theme = useContext(ThemeContext);
-  const files = fs.readdirSync(path.join(process.cwd(), 'playlists')).filter((f: string) => f.endsWith('.json'));
+  const files = fs.readdirSync(PLAYLIST_FOLDER).filter((f: string) => f.endsWith('.json'));
   if (!files.length) {
     useInput(() => onDone());
     return (
@@ -39,7 +40,7 @@ const PlaylistPicker: React.FC<PlaylistPickerProps> = ({ onDone }) => {
   };
 
   const items = files.map((file: string) => {
-    const raw = fs.readFileSync(path.join(process.cwd(), 'playlists', file), 'utf-8');
+    const raw = fs.readFileSync(path.join(PLAYLIST_FOLDER, file), 'utf-8');
     let name = file.replace(/\.json$/, '');
     let tags: string[] = [];
     try {
@@ -53,7 +54,7 @@ const PlaylistPicker: React.FC<PlaylistPickerProps> = ({ onDone }) => {
 
   const handleSelect = (item: { label: string; value: string }) => {
     const playlist: Playlist = JSON.parse(
-      fs.readFileSync(path.join(process.cwd(), 'playlists', item.value), 'utf-8')
+      fs.readFileSync(path.join(PLAYLIST_FOLDER, item.value), 'utf-8')
     );
     setPlaylist(playlist);
   };

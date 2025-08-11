@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { createAudioResource, AudioPlayerStatus } from '@discordjs/voice';
 import { DiscordService } from '../services/discord-service.js';
-import { Playlist, Track } from '../services/playlist-service.js';
+import { Playlist } from '../services/playlist-service.js';
 import { YouTubeService } from '../services/youtube-service.js';
 import { ThemeContext } from './ThemeProvider.js';
 import PlaylistWithTags from './PlaylistWithTags.js';
@@ -26,8 +26,13 @@ interface StreamPlayerProps {
 const StreamPlayer: React.FC<StreamPlayerProps> = ({ playlist, onDone }) => {
   // consume global theme colors
   const theme = useContext(ThemeContext);
-  // shuffle tracks once on load
-  const [tracks] = useState<Track[]>(() => shuffleArray([...playlist.tracks]));
+  // derive a shuffled version of the playlist on load
+  const shuffledPlaylist = useMemo<Playlist>(() => ({
+    ...playlist,
+    tracks: shuffleArray([...playlist.tracks])
+  }), [playlist]);
+  // use shuffled tracks for playback
+  const tracks = shuffledPlaylist.tracks;
   // ref to YouTubeService to cancel underlying child process
   typeof YouTubeService;
   const ytServiceRef = useRef<YouTubeService>(new YouTubeService());
@@ -140,7 +145,7 @@ const StreamPlayer: React.FC<StreamPlayerProps> = ({ playlist, onDone }) => {
   if (currentIndex < tracks.length) {
     return (
       <Box flexDirection="column">        
-        <PlaylistWithTags playlist={playlist} currentIndex={currentIndex} />
+        <PlaylistWithTags playlist={shuffledPlaylist} currentIndex={currentIndex} />
         {statusMessage && (
           <Text color={theme.accent}>
             {statusMessage}
