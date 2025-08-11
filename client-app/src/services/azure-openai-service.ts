@@ -98,6 +98,8 @@ export class AzureOpenAIService {
         max_tokens: options?.maxTokens ?? 16384,
         temperature: options?.temperature ?? 0.7,
         top_p: options?.topP ?? 1,
+        frequency_penalty: options?.frequencyPenalty ?? 0,
+        presence_penalty: options?.presencePenalty ?? 0,
         model: this.modelName
       });
 
@@ -120,47 +122,36 @@ export class AzureOpenAIService {
   }
 
   /**
-   * Generate a playlist using a prompt
+   * Generate a playlist using separate system and user messages for better context separation
    */
-  async generatePlaylist(prompt: string, options?: {
+  async generatePlaylist(systemMessage: string, userMessage: string, options?: {
     temperature?: number;
     maxTokens?: number;
+    topP?: number;
+    frequencyPenalty?: number;
+    presencePenalty?: number;
   }): Promise<string> {
-    const systemMessage: AzureOpenAIMessage = {
-      role: 'system',
-      content: `You are a music expert that generates playlists in JSON format. 
-You should respond ONLY with valid JSON in the following format:
-{
-  "name": "Playlist Name",
-  "tags": ["tag1", "tag2"],
-  "tracks": [
-    {
-      "name": "Song Title",
-      "artists": ["Artist Name"],
-      "uri": "",
-      "popularity": 0
-    }
-  ]
-}
 
-Important guidelines:
-- Leave "uri" as empty string - it will be filled by Spotify search
-- Set "popularity" to 0 - it will be updated during Spotify lookup
-- Include diverse, real songs that match the requested criteria
-- Ensure all JSON is properly formatted and valid
-- Do not include any explanatory text, only the JSON response`
-    };
+    const messages: AzureOpenAIMessage[] = [
+      {
+        role: 'system',
+        content: systemMessage
+      },
+      {
+        role: 'user', 
+        content: userMessage
+      }
+    ];
 
-    const userMessage: AzureOpenAIMessage = {
-      role: 'user',
-      content: prompt
-    };
-
-    return await this.chat([systemMessage, userMessage], {
-      temperature: options?.temperature ?? 0.8,
-      maxTokens: options?.maxTokens ?? 4000
+    return await this.chat(messages, {
+      temperature: options?.temperature ?? 0.1, // Lower temperature for more factual responses
+      maxTokens: options?.maxTokens ?? 3000,
+      topP: options?.topP ?? 0.5, // More focused sampling
+      frequencyPenalty: options?.frequencyPenalty ?? 0.0, // Allow repetition of known patterns
+      presencePenalty: options?.presencePenalty ?? 0.0 // Don't penalize mentioning real artists/songs
     });
   }
+
 
   /**
    * Test the connection to Azure OpenAI API

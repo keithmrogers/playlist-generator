@@ -8,11 +8,10 @@ import { TagService } from '../services/tag-service.js';
 import { AzureOpenAIService } from '../services/azure-openai-service.js';
 import {ThemeContext} from './ThemeProvider.js';
 import { PLAYLIST_FOLDER } from '../config.js';
+import { promptTemplates } from '../templates/promptTemplates.js';
 
 // Initialize prompt service once
-const templates: PromptTemplate[] = JSON.parse(
-  fs.readFileSync(path.join(process.cwd(), './templates/promptTemplates.json'), 'utf-8')
-);
+const templates: PromptTemplate[] = promptTemplates;
 const campaignConfig: CampaignConfig = JSON.parse(
   fs.readFileSync(path.join(PLAYLIST_FOLDER, './config/campaign.json'), 'utf-8')
 );
@@ -106,7 +105,7 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
     const numTracks = parseInt(varsObj['numberOfTracks'] || values['numberOfTracks'] || '10');
     const searchCount = numTracks * 3.5;
     const promptVars = { ...varsObj, searchCount, numberOfTracks: (varsObj['numberOfTracks']?.toString()||'10') };
-    const p = await promptService.getPrompt('campaign_playlist', promptVars);
+    const promptMessages = await promptService.getPromptMessages('campaign_playlist', promptVars);
     
     // Call Azure OpenAI service
     setIsLoading(true);
@@ -117,7 +116,10 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
         process.env['AZURE_OPENAI_ENDPOINT']!,
         process.env['AZURE_OPENAI_DEPLOYMENT']!
       );
-      const response = await azureOpenAIService.generatePlaylist(p);
+      const response = await azureOpenAIService.generatePlaylist(
+        promptMessages.systemMessage,
+        promptMessages.userMessage
+      );
       setLlmResponse(response);
     } catch (err) {
       console.error('Error calling Azure OpenAI:', err);

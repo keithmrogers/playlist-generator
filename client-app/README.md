@@ -54,7 +54,7 @@ npm start
 Follow the interactive prompts to generate or stream a playlist.
 
 ## Samples & Playlists
-- Playlist templates are defined in `templates/promptTemplates.json`.
+- Playlist templates are defined in `templates/promptTemplates.ts`.
 - Saved playlists are stored in the `playlists/` directory and can be reloaded or streamed via the CLI.
 
 ## Development
