@@ -5,10 +5,9 @@ import path from 'path';
 import { CampaignConfig, PromptService, PromptTemplate } from '../services/prompt-service.js';
 import { Playlist, PlaylistService } from '../services/playlist-service.js';
 import { TagService } from '../services/tag-service.js';
-import TextInput from 'ink-text-input';
+import { AzureOpenAIService } from '../services/azure-openai-service.js';
 import {ThemeContext} from './ThemeProvider.js';
 import { PLAYLIST_FOLDER } from '../config.js';
-import clipboardy from 'clipboardy';
 
 // Initialize prompt service once
 const templates: PromptTemplate[] = JSON.parse(
@@ -25,32 +24,16 @@ interface PlaylistMakerProps {
 
 const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
   const theme = useContext(ThemeContext);
-  const fields = [
-    { name: 'numberOfTracks', label: 'Number of tracks?', default: '10' },
-    { name: 'moods', label: 'Target moods (comma-separated)?', default: '' },
-    { name: 'sceneType', label: 'Scene/encounter type?', default: '' },
-    { name: 'tempo', label: 'Tempo (slow, moderate, fast)?', default: 'moderate' },
-    { name: 'intensity', label: 'Intensity/energy level?', default: 'medium' },
-    { name: 'environment', label: 'Environment/location?', default: '' },
-    { name: 'instrumentationFocus', label: 'Instrumentation focus?', default: '' },
-    { name: 'narrativeCue', label: 'Narrative cue/purpose?', default: '' },
-    { name: 'trackLength', label: 'Track length (short, standard, extended)?', default: 'standard' }
-  ];
-  const [index, setIndex] = useState(0);
-  const [input, setInput] = useState(fields[0]?.default);
   const [values, setValues] = useState<Record<string,string>>({});
-  const [promptText, setPromptText] = useState<string>('');
-  const [stage, setStage] = useState<'choose'|'form'|'display'|'input'|'jsonVars'>('choose');
-  // Copy generated prompt to clipboard when displaying
+  const [stage, setStage] = useState<'llm'|'processing'|'input'|'jsonVars'>('jsonVars');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [llmResponse, setLlmResponse] = useState<string>('');
+  // Automatically process playlist when LLM completes
   useEffect(() => {
-    if (stage === 'display') {
-      try {
-        clipboardy.writeSync(promptText);
-      } catch (err) {
-        console.error('Failed to copy prompt to clipboard:', err);
-      }
+    if (stage === 'llm' && llmResponse && !isLoading) {
+      validateAndSavePlaylist(llmResponse);
     }
-  }, [stage, promptText]);
+  }, [stage, llmResponse, isLoading]);
   const jsonBuffer = useRef<string>('');
   // State for displaying buffer content (for playlist JSON and vars)
   const [displayBuffer, setDisplayBuffer] = useState<string>('');
@@ -59,11 +42,7 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
   const jsonVarsBuffer = useRef<string>('');
 
   useInput((input, key) => {
-    if (stage === 'choose') {
-      if (input.toLowerCase() === 'j') setStage('jsonVars');
-      else if (input.toLowerCase() === 's') setStage('input');
-      else setStage('form');
-    } else if (stage === 'jsonVars') {
+    if (stage === 'jsonVars') {
       if (key.return) {
         handleSubmitVars(jsonVarsBuffer.current);
         jsonVarsBuffer.current = '';
@@ -74,38 +53,18 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
       }
     } else if (stage === 'input') {
       if (key.return) {
-        handleSubmitJson(jsonBuffer.current);
+        validateAndSavePlaylist(jsonBuffer.current);
         jsonBuffer.current = '';
         setDisplayBuffer('');
       } else {
         jsonBuffer.current += input;
         setDisplayBuffer(jsonBuffer.current);
       }
-    } else if (stage === 'display') {
-      setStage('input');
     }
   });
 
-  const handleSubmitForm = async () => {
-    const field = fields[index]!;
-    setValues(prev => ({ ...prev, [field.name]: input || field.default || '' }));
-    if (index < fields.length - 1) {
-      const next = index + 1;
-      setIndex(next);
-      setInput(fields[next]?.default);
-    } else {
-      // generate prompt: calculate searchCount = 2 * numberOfTracks
-      const vars = Object.fromEntries(Object.entries(values).concat([[field.name, input || '']]));
-      const numTracks = parseInt(vars['numberOfTracks']!);
-      const searchCount = numTracks * 3.5; // 3.5x to account for scrubbing
-      const promptVars = { ...vars, searchCount, numberOfTracks: vars['numberOfTracks']! };
-      const p = await promptService.getPrompt('campaign_playlist', promptVars);
-      setPromptText(p);
-      setStage('display');
-    }
-  };
-
-  const handleSubmitJson = async (json: string) => {
+  const validateAndSavePlaylist = async (json: string) => {
+    setStage('processing');
     let playlist: Playlist;
     try { playlist = JSON.parse(json) as Playlist; } catch (err) {
       console.error('Invalid JSON'); return;
@@ -148,39 +107,53 @@ const PlaylistMaker: React.FC<PlaylistMakerProps> = ({ onDone }) => {
     const searchCount = numTracks * 3.5;
     const promptVars = { ...varsObj, searchCount, numberOfTracks: (varsObj['numberOfTracks']?.toString()||'10') };
     const p = await promptService.getPrompt('campaign_playlist', promptVars);
-    setPromptText(p);
-    setStage('display');
+    
+    // Call Azure OpenAI service
+    setIsLoading(true);
+    setStage('llm');
+    try {
+      const azureOpenAIService = new AzureOpenAIService(
+        process.env['AZURE_OPENAI_API_KEY']!,
+        process.env['AZURE_OPENAI_ENDPOINT']!,
+        process.env['AZURE_OPENAI_DEPLOYMENT']!
+      );
+      const response = await azureOpenAIService.generatePlaylist(p);
+      setLlmResponse(response);
+    } catch (err) {
+      console.error('Error calling Azure OpenAI:', err);
+      setLlmResponse('Error generating playlist. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <Box flexDirection="column">
-      {stage === 'choose' ? (
-        <>
-          <Text color={theme.accent}>Press 'j' to input JSON variables for quick playlist making, 's' to skip to pasting JSON, or any other key for interactive mode</Text>
-        </>
-      ) : stage === 'jsonVars' ? (
+      {stage === 'jsonVars' ? (
         <>
           <Text color={theme.accent}>Paste JSON variables and press Enter:</Text>
           <Box borderStyle="round" padding={1} flexDirection="column" borderColor={theme.surface}>
             <Text>{displayJsonVarsBuffer}</Text>
           </Box>
         </>
-      ) : stage === 'form' ? (
+      ) : stage === 'llm' ? (
         <>
-          <Text color={theme.accent}>{fields[index]?.label} (default: {fields[index]?.default}):</Text>
-          <TextInput
-            value={input || ''}
-            onChange={setInput}
-            onSubmit={handleSubmitForm}
-          />
+          {isLoading ? (
+            <>
+              <Text bold color={theme.highlight}>=== GENERATING PLAYLIST ===</Text>
+              <Text color={theme.accent}>Calling Azure OpenAI to generate playlist...</Text>
+            </>
+          ) : (
+            <>
+              <Text bold color={theme.highlight}>=== PLAYLIST GENERATED ===</Text>
+              <Text color={theme.accent}>Processing and saving playlist...</Text>
+            </>
+          )}
         </>
-      ) : stage === 'display' ? (
+      ) : stage === 'processing' ? (
         <>
-          <Text bold color={theme.highlight}>=== COPY PROMPT TO LLM ===</Text>
-          <Box marginY={1} borderStyle="round" padding={1} flexDirection="column">
-            <Text color={theme.textPrimary}>{promptText}</Text>
-          </Box>
-          <Text color={theme.accent}>Prompt copied to clipboard. Press any key to paste JSON playlist</Text>
+          <Text bold color={theme.highlight}>=== PROCESSING PLAYLIST ===</Text>
+          <Text color={theme.accent}>Scrubbing with Spotify, adding tags, and saving...</Text>
         </>
       ) : stage === 'input' ? (
         <>

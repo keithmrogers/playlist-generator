@@ -4,6 +4,7 @@ import path from 'path';
 import { DiscordService } from './discord-service.js';
 import { YouTubeService } from './youtube-service.js';
 import { TagService } from './tag-service.js';
+import { AzureOpenAIService } from './azure-openai-service.js';
 import 'dotenv/config';
 import { PLAYLIST_FOLDER } from '../config.js';
 
@@ -23,7 +24,8 @@ export class HealthService {
     const ytOk = await this.checkYouTube();
     const tagsOk = await this.checkTagService();
     const configOk = await this.checkCampaignConfig();
-    return spotifyOk && discordOk && ytOk && tagsOk && configOk;
+    const azureOpenAIOk = await this.checkAzureOpenAI();
+    return spotifyOk && discordOk && ytOk && tagsOk && configOk && azureOpenAIOk;
   }
 
   private async checkSpotify(): Promise<boolean> {
@@ -104,6 +106,44 @@ export class HealthService {
       return ok;
     } catch (err) {
       console.error('Last.fm: ERROR', err);
+      return false;
+    }
+  }
+
+  /**
+   * Health check for Azure OpenAI service
+   */
+  private async checkAzureOpenAI(): Promise<boolean> {
+    console.log('Checking Azure OpenAI API...');
+    
+    const apiKey = process.env['AZURE_OPENAI_API_KEY'];
+    const endpoint = process.env['AZURE_OPENAI_ENDPOINT'];
+    const deploymentName = process.env['AZURE_OPENAI_DEPLOYMENT_NAME'];
+    
+    if (!apiKey || !endpoint || !deploymentName) {
+      console.warn('Azure OpenAI: SKIPPED (Required environment variables not configured)');
+      console.warn('Required: AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT_NAME');
+      return true; // Don't fail health check if Azure OpenAI is not configured
+    }
+
+    try {
+      const azureOpenAIService = new AzureOpenAIService(
+        apiKey, 
+        endpoint, 
+        deploymentName,
+        process.env['AZURE_OPENAI_API_VERSION']
+      );
+      const isConnected = await azureOpenAIService.testConnection();
+      
+      if (isConnected) {
+        console.log('Azure OpenAI: OK');
+        return true;
+      } else {
+        console.error('Azure OpenAI: ERROR Connection test failed');
+        return false;
+      }
+    } catch (err) {
+      console.error('Azure OpenAI: ERROR', err);
       return false;
     }
   }
