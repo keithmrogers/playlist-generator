@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits, VoiceBasedChannel } from 'discord.js';
-import { joinVoiceChannel, createAudioPlayer, AudioPlayer, AudioResource, VoiceConnection, AudioPlayerStatus, getVoiceConnection } from '@discordjs/voice';
+import { joinVoiceChannel, createAudioPlayer, AudioPlayer, AudioResource, VoiceConnection, AudioPlayerStatus, getVoiceConnection, VoiceConnectionStatus, entersState } from '@discordjs/voice';
 
 export class DiscordService {
   private lastPlayerStatus?: AudioPlayerStatus;
@@ -16,7 +16,7 @@ export class DiscordService {
 
   async init(): Promise<void> {
     // wait for the Discord client to be ready
-    await new Promise<void>(resolve => this.client.once('ready', () => resolve()));
+    await new Promise<void>(resolve => this.client.once('clientReady', () => resolve()));
   }
 
   getVoiceConnection(): VoiceConnection | undefined {
@@ -34,22 +34,31 @@ export class DiscordService {
     const connection = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
-      adapterCreator: channel.guild.voiceAdapterCreator
+      adapterCreator: channel.guild.voiceAdapterCreator,
+      selfDeaf: false,
+      selfMute: false,
     });
-    
-    //https://github.com/discordjs/discord.js/issues/9185#issuecomment-1452514375
-    const networkStateChangeHandler = (newNetworkState: any) => {
-      const newUdp = Reflect.get(newNetworkState, 'udp');
-      clearInterval(newUdp?.keepAliveInterval);
-    }
 
     connection.on('stateChange', (oldState: any, newState: any) => {
+      console.log(`[Discord] voice connection: ${oldState.status} → ${newState.status}`);
+
+      //https://github.com/discordjs/discord.js/issues/9185#issuecomment-1452514375
+      const networkStateChangeHandler = (newNetworkState: any) => {
+        const newUdp = Reflect.get(newNetworkState, 'udp');
+        clearInterval(newUdp?.keepAliveInterval);
+      };
       const oldNetworking = Reflect.get(oldState, 'networking');
       const newNetworking = Reflect.get(newState, 'networking');
-
       oldNetworking?.off('stateChange', networkStateChangeHandler);
       newNetworking?.on('stateChange', networkStateChangeHandler);
     });
+
+    connection.on('error', (err) => {
+      console.error('[Discord] voice connection error:', err.message);
+    });
+
+    await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
+    console.log('[Discord] voice connection ready');
   }
 
   async playResource(resource: AudioResource): Promise<void> {
@@ -88,13 +97,18 @@ export class DiscordService {
     if (!this.player) {
       this.player = createAudioPlayer();
       this.player.on('stateChange', (_old, newState) => {
+        console.log(`[Discord] player: ${_old.status} → ${newState.status}`);
         this.lastPlayerStatus = newState.status;
       });
-      this.getVoiceConnection()?.subscribe(this.player);
+      this.player.on('error', (err) => {
+        console.error('[Discord] player error:', err.message);
+      });
+      const conn = this.getVoiceConnection();
+      console.log(`[Discord] voice connection state: ${conn?.state.status ?? 'NOT FOUND'}`);
+      const sub = conn?.subscribe(this.player);
+      console.log(`[Discord] player subscribed: ${!!sub}`);
     }
-    this.player.on('error', (err) => {
-      console.warn('AudioPlayer error suppressed:', err.message);
-    });
+    console.log(`[Discord] playNow called — player status: ${this.player.state.status}`);
     this.player.play(resource);
   }
 

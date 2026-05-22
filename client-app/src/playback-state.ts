@@ -1,4 +1,4 @@
-import { createAudioResource, AudioPlayerStatus } from '@discordjs/voice';
+import { createAudioResource, demuxProbe, AudioPlayerStatus } from '@discordjs/voice';
 import type { Response } from 'express';
 import { DiscordService } from './services/discord-service.js';
 import { YouTubeService } from './services/youtube-service.js';
@@ -77,12 +77,18 @@ export class PlaybackState {
     if (!this.tracks.length) return;
     const track = this.tracks[this.currentIndex]!;
     const query = `${track.name} ${track.artists.join(' ')}`;
+    console.log(`[Playback] searching: "${query}"`);
     this.broadcast();
     try {
       const video = await this.yt.search(query);
       if (!video) throw new Error(`No YouTube result for: ${query}`);
+      console.log(`[Playback] found: "${video.title}" — ${video.url}`);
       const stream = await this.yt.getAudioStream(video.url);
-      const resource = createAudioResource(stream, { metadata: { title: video.title, id: video.id } });
+      console.log(`[Playback] stream ready, probing format`);
+      const { stream: probed, type } = await demuxProbe(stream);
+      console.log(`[Playback] detected stream type: ${type}`);
+      const resource = createAudioResource(probed, { inputType: type, metadata: { title: video.title, id: video.id } });
+      console.log(`[Playback] calling playNow`);
       this.discord.playNow(resource);
     } catch (err) {
       console.error(`[PlaybackState] error on track ${this.currentIndex}:`, err);

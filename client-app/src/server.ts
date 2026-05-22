@@ -93,6 +93,18 @@ app.post('/skip', async (_req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/debug', (_req, res) => {
+  const conn = discord.getVoiceConnection();
+  res.json({
+    discord: {
+      clientReady: discord.healthCheck().clientReady,
+      connectionStatus: conn?.state.status ?? 'none',
+      connectionPing: conn?.ping,
+    },
+    playback: playback.getState(),
+  });
+});
+
 app.get('/status', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');

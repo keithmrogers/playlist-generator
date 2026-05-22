@@ -2,7 +2,8 @@ node_modules
 .env
 .env.*
 !.env.example
-src
+src/**/*.ts
+src/**/*.tsx
 openspec
 tests
 *.md

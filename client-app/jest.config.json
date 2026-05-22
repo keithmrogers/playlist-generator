@@ -1,12 +1,13 @@
 {
-  "preset": "ts-jest",
   "testEnvironment": "node",
+  "extensionsToTreatAsEsm": [".ts"],
   "roots": ["<rootDir>/src", "<rootDir>/tests"],
   "testMatch": ["**/__tests__/**/*.ts", "**/?(*.)+(spec|test).ts"],
   "transform": {
-    "^.+\\.ts$": "ts-jest"
+    "^.+\\.ts$": ["ts-jest", { "useESM": true }]
   },
   "moduleNameMapper": {
-    "^@/(.*)$": "<rootDir>/src/$1"
+    "^@/(.*)$": "<rootDir>/src/$1",
+    "^(\\.{1,2}/.*)\\.js$": "$1"
   }
 }

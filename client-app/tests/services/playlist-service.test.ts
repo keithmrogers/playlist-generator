@@ -1,109 +1,91 @@
-import { PlaylistService, Playlist } from '../../src/services/playlist-service';
 import { jest } from '@jest/globals';
+import { join } from 'path';
 
-// Mock fs/promises and path modules
-jest.mock('fs/promises', () => ({
+const mockFs = {
   writeFile: jest.fn(),
   readdir: jest.fn(),
   readFile: jest.fn(),
   mkdir: jest.fn(),
+};
+
+jest.unstable_mockModule('fs', () => ({
+  promises: mockFs,
 }));
 
-jest.mock('path', () => ({
-  join: jest.fn((...args) => args.join('/')),
-}));
+const mockPlaylistsDir = '/mock/playlists';
+
+const testPlaylist = {
+  name: 'Test Playlist',
+  tracks: [
+    { name: 'Song 1', artists: ['Artist 1'], uri: 'spotify:track:1' },
+    { name: 'Song 2', artists: ['Artist 2'], uri: 'spotify:track:2' },
+  ],
+};
 
 describe('PlaylistService', () => {
-  let playlistService: PlaylistService;
-  let path: any;
-  const mockPlaylistsDir = (() => {
-    path = require('path');
-    return path.join(__dirname, '../temp-test-playlists');
-  })();
-  
-  // Sample test data
-  const testPlaylist: Playlist = {
-    name: 'Test Playlist',
-    tracks: [
-      { name: 'Song 1', artists: ['Artist 1'], uri: 'spotify:track:1' },
-      { name: 'Song 2', artists: ['Artist 2'], uri: 'spotify:track:2' }
-    ]
-  };
+  let playlistService: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
-    jest.resetModules();
+    const { PlaylistService } = await import('../../src/services/playlist-service.js');
     playlistService = new PlaylistService(mockPlaylistsDir);
   });
 
   describe('savePlaylist', () => {
-    it('should save a playlist to a file', async () => {
-      const fsPromises = require('fs/promises');
-      fsPromises.writeFile.mockResolvedValue(undefined);
+    it('saves a playlist to a JSON file', async () => {
+      mockFs.mkdir.mockResolvedValue(undefined as never);
+      mockFs.writeFile.mockResolvedValue(undefined as never);
 
       const filePath = await playlistService.savePlaylist(testPlaylist);
-      
-      expect(path.join).toHaveBeenCalledWith(mockPlaylistsDir, 'Test_Playlist.json');
-      expect(fsPromises.writeFile).toHaveBeenCalledWith(
-        `${mockPlaylistsDir}/Test_Playlist.json`,
-        JSON.stringify(testPlaylist, null, 2)
-      );
-      expect(filePath).toBe(`${mockPlaylistsDir}/Test_Playlist.json`);
+
+      const expectedPath = join(mockPlaylistsDir, 'Test_Playlist.json');
+      expect(mockFs.writeFile).toHaveBeenCalledWith(expectedPath, JSON.stringify(testPlaylist, null, 2));
+      expect(filePath).toBe(expectedPath);
     });
 
-    it('should handle playlist names with special characters', async () => {
-      const fsPromises = require('fs/promises');
-      fsPromises.writeFile.mockResolvedValue(undefined);
-      
-      const specialPlaylist: Playlist = {
-        name: 'Test/Playlist\\With/Special\\Chars',
-        tracks: []
-      };
+    it('sanitizes playlist name for filename', async () => {
+      mockFs.mkdir.mockResolvedValue(undefined as never);
+      mockFs.writeFile.mockResolvedValue(undefined as never);
 
+      const specialPlaylist = { name: 'Test/Playlist\\With/Special\\Chars', tracks: [] };
       await playlistService.savePlaylist(specialPlaylist);
-      
-      expect(path.join).toHaveBeenCalledWith(
-        mockPlaylistsDir, 
-        'Test_Playlist_With_Special_Chars.json'
+
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
+        join(mockPlaylistsDir, 'Test_Playlist_With_Special_Chars.json'),
+        expect.any(String)
       );
     });
   });
 
   describe('getPlaylists', () => {
-    it('should return a list of playlist files', async () => {
-      const fsPromises = require('fs/promises');
-      fsPromises.readdir.mockResolvedValue(['playlist1.json', 'playlist2.json', 'notaplaylist.txt']);
-      
+    it('returns .json filenames from the directory', async () => {
+      mockFs.readdir.mockResolvedValue(['playlist1.json', 'playlist2.json', 'notaplaylist.txt'] as never);
+
       const playlists = await playlistService.getPlaylists();
-      
-      expect(fsPromises.readdir).toHaveBeenCalledWith(mockPlaylistsDir);
+
+      expect(mockFs.readdir).toHaveBeenCalledWith(mockPlaylistsDir);
       expect(playlists).toEqual(['playlist1.json', 'playlist2.json']);
     });
 
-    it('should create the directory if it does not exist', async () => {
-      const fsPromises = require('fs/promises');
-      const error = new Error('Directory not found');
-      (error as NodeJS.ErrnoException).code = 'ENOENT';
-      
-      fsPromises.readdir.mockRejectedValue(error);
-      fsPromises.mkdir.mockResolvedValue(undefined);
-      
+    it('creates the directory and returns empty on ENOENT', async () => {
+      const error = Object.assign(new Error('Not found'), { code: 'ENOENT' });
+      mockFs.readdir.mockRejectedValue(error as never);
+      mockFs.mkdir.mockResolvedValue(undefined as never);
+
       const playlists = await playlistService.getPlaylists();
-      
-      expect(fsPromises.mkdir).toHaveBeenCalledWith(mockPlaylistsDir, { recursive: true });
+
+      expect(mockFs.mkdir).toHaveBeenCalledWith(mockPlaylistsDir, { recursive: true });
       expect(playlists).toEqual([]);
     });
   });
 
   describe('loadPlaylist', () => {
-    it('should load a playlist from a file', async () => {
-      const fsPromises = require('fs/promises');
-      fsPromises.readFile.mockResolvedValue(JSON.stringify(testPlaylist));
-      
+    it('loads and parses a playlist from a file', async () => {
+      mockFs.readFile.mockResolvedValue(JSON.stringify(testPlaylist) as never);
+
       const playlist = await playlistService.loadPlaylist('test-playlist.json');
-      
-      expect(path.join).toHaveBeenCalledWith(mockPlaylistsDir, 'test-playlist.json');
-      expect(fsPromises.readFile).toHaveBeenCalledWith(`${mockPlaylistsDir}/test-playlist.json`, 'utf-8');
+
+      expect(mockFs.readFile).toHaveBeenCalledWith(join(mockPlaylistsDir, 'test-playlist.json'), 'utf-8');
       expect(playlist).toEqual(testPlaylist);
     });
   });
