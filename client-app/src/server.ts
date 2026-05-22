@@ -11,7 +11,6 @@ const token = process.env['DISCORD_TOKEN'];
 const channelId = process.env['DISCORD_VOICE_CHANNEL_ID'];
 
 if (!token || !channelId) {
-  console.error('ERROR: DISCORD_TOKEN and DISCORD_VOICE_CHANNEL_ID are required');
   process.exit(1);
 }
 
@@ -22,10 +21,8 @@ const PORT = parseInt(process.env['PORT'] ?? '3000', 10);
 const discord = new DiscordService(token, channelId);
 const playlists = new PlaylistService(PLAYLIST_FOLDER);
 
-console.log('Connecting to Discord...');
 await discord.init();
 await discord.connectVoice();
-console.log('Discord connected.');
 
 const playback = new PlaybackState(discord);
 const app = express();
@@ -116,12 +113,9 @@ app.get('/status', (req, res) => {
 
 // --- Start ---
 
-const server = app.listen(PORT, () => {
-  console.log(`Soundboard running at http://localhost:${PORT}`);
-});
+const server = app.listen(PORT);
 
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down...');
   playback.destroy();
   discord.destroy();
   server.close(() => process.exit(0));

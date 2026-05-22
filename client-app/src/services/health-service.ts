@@ -11,7 +11,6 @@ export class HealthService {
 
   private async checkDiscord(): Promise<boolean> {
     if (!process.env['DISCORD_TOKEN'] || !process.env['DISCORD_VOICE_CHANNEL_ID']) {
-      console.error('Discord: ERROR Missing DISCORD_TOKEN or DISCORD_VOICE_CHANNEL_ID');
       return false;
     }
     const discord = new DiscordService(
@@ -22,13 +21,10 @@ export class HealthService {
       await discord.init();
       const { clientReady } = discord.healthCheck();
       if (clientReady) {
-        console.log('Discord: OK');
         return true;
       }
-      console.error('Discord: ERROR client not ready');
       return false;
-    } catch (err) {
-      console.error('Discord: ERROR during init', err);
+    } catch {
       return false;
     } finally {
       discord.destroy();

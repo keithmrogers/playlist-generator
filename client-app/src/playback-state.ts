@@ -45,7 +45,7 @@ export class PlaybackState {
     const isIdle = status === AudioPlayerStatus.Idle;
     this.prevPlayerStatus = status;
     if (wasPlaying && isIdle && !this.advancing) {
-      this.advance().catch(console.error);
+      this.advance().catch(() => {});
     } else {
       this.broadcast();
     }
@@ -62,7 +62,7 @@ export class PlaybackState {
     this.tracks = shuffle(playlist.tracks);
     this.currentIndex = 0;
     this.broadcast();
-    this.playCurrentTrack().catch(console.error);
+    this.playCurrentTrack().catch(() => {});
   }
 
   async advance(): Promise<void> {
@@ -77,21 +77,15 @@ export class PlaybackState {
     if (!this.tracks.length) return;
     const track = this.tracks[this.currentIndex]!;
     const query = `${track.name} ${track.artists.join(' ')}`;
-    console.log(`[Playback] searching: "${query}"`);
     this.broadcast();
     try {
       const video = await this.yt.search(query);
       if (!video) throw new Error(`No YouTube result for: ${query}`);
-      console.log(`[Playback] found: "${video.title}" — ${video.url}`);
       const stream = await this.yt.getAudioStream(video.url);
-      console.log(`[Playback] stream ready, probing format`);
       const { stream: probed, type } = await demuxProbe(stream);
-      console.log(`[Playback] detected stream type: ${type}`);
       const resource = createAudioResource(probed, { inputType: type, metadata: { title: video.title, id: video.id } });
-      console.log(`[Playback] calling playNow`);
       this.discord.playNow(resource);
-    } catch (err) {
-      console.error(`[PlaybackState] error on track ${this.currentIndex}:`, err);
+    } catch {
     }
   }
 
