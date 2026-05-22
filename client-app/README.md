@@ -1,67 +1,111 @@
-# Playlist Generator
+# D&D Soundboard
 
-[![Build Status](https://github.com/keithmrogers/playlist-generator/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/keithmrogers/playlist-generator/actions/workflows/ci.yml?branch=initial-app)
-[![Coverage Status](https://coveralls.io/repos/github/keithmrogers/playlist-generator/badge.svg?branch=main)](https://coveralls.io/github/keithmrogers/playlist-generator)
+A mobile-friendly web UI for streaming ambient D&D music to a Discord voice channel. Tap a mood button to switch music instantly — no keyboard required.
 
-## Features
-- Health checks: Spotify, Discord, YouTube (yt-dlp), Last.fm tag service, and campaign configuration
-- Interactive CLI UI using Ink for an improved user experience
-- Search Spotify for tracks via the Spotify Web API
-- Tag-based track suggestions via Last.fm
-- Save and manage playlists locally as JSON files
-- Stream playlists to a Discord voice channel using yt-dlp
-- Support for predefined campaigns via JSON configuration
+## Quick Start
 
-## Prerequisites
-- Node.js v16+
-- A Spotify Developer account (Client ID & Secret)
-- A Discord Bot Token with the bot added to your server
-- A Voice Channel ID where the bot can connect
-- A Last.fm API Key (for tag suggestions)
-- yt-dlp installed and available in your PATH
+### 1. Build
 
-## Environment Variables
-| Variable                 | Description                               |
-| ------------------------ | ----------------------------------------- |
-| SPOTIFY_CLIENT_ID        | Spotify API Client ID                     |
-| SPOTIFY_CLIENT_SECRET    | Spotify API Client Secret                 |
-| DISCORD_TOKEN            | Discord Bot Token                         |
-| DISCORD_VOICE_CHANNEL_ID | Discord Voice Channel ID                  |
-| LASTFM_API_KEY           | Last.fm API Key for tag suggestions       |
-| YTDLP_PATH               | Optional: Path to yt-dlp executable       |
-
-## Configuration
-Copy `config/campaign.json.example` to `config/campaign.json` and update campaigns as needed.
-
-## Installation
-```sh
+```bash
 npm install
+npm run build
 ```
 
-## Commands
-| Command               | Description                                  |
-| --------------------- | -------------------------------------------- |
-| npm start             | Run the CLI application                      |
-| npm run dev           | Run in development mode with live reload     |
-| npm test              | Run unit tests                               |
-| npm run test:e2e      | Run end-to-end tests                         |
-| npm run build         | Compile TypeScript sources                   |
+### 2. Configure secrets
 
-## Usage
-```sh
+```bash
+cp .env.example .env
+# Edit .env with your values
+```
+
+| Variable | Required | Description |
+|---|---|---|
+| `DISCORD_TOKEN` | Yes | Discord bot token |
+| `DISCORD_VOICE_CHANNEL_ID` | Yes | Voice channel the bot will join |
+| `PORT` | No | HTTP port (default: 3000) |
+| `PLAYLIST_FOLDER` | No | Path to playlist JSON files (default: `./playlists`) |
+
+### 3. Add playlists
+
+Place JSON files in your playlists directory. The `name` field becomes the mood button label:
+
+```json
+{
+  "name": "Combat",
+  "tracks": [
+    { "name": "Prelude in D Minor", "artists": ["Kevin MacLeod"] }
+  ]
+}
+```
+
+### 4. Run
+
+```bash
 npm start
 ```
-Follow the interactive prompts to generate or stream a playlist.
 
-## Samples & Playlists
-- Playlist templates are defined in `templates/promptTemplates.json`.
-- Saved playlists are stored in the `playlists/` directory and can be reloaded or streamed via the CLI.
+Open `http://localhost:3000`.
 
-## Development
-- Clone the repository and run `npm install`.
-- Use `npm run dev` for development with live reload.
-- Run `npm test` for unit tests and `npm run test:e2e` for end-to-end tests.
-- Build the project with `npm run build`.
+---
+
+## Running in Podman
+
+### Build the image
+
+```bash
+npm run build
+podman build -t soundboard .
+```
+
+### Option A — env file (simplest)
+
+```bash
+podman run -d \
+  --name soundboard \
+  --env-file .env \
+  -v /path/to/playlists:/app/playlists \
+  -p 3000:3000 \
+  soundboard
+```
+
+### Option B — Podman secrets (more secure)
+
+```bash
+printf 'your-token' | podman secret create discord_token -
+printf 'your-channel-id' | podman secret create discord_channel_id -
+
+podman run -d \
+  --name soundboard \
+  --secret discord_token,type=env,target=DISCORD_TOKEN \
+  --secret discord_channel_id,type=env,target=DISCORD_VOICE_CHANNEL_ID \
+  -v /path/to/playlists:/app/playlists \
+  -p 3000:3000 \
+  soundboard
+```
+
+Access the UI at `http://<server-ip>:3000`.
+
+```bash
+podman stop soundboard   # graceful shutdown, Discord disconnects cleanly
+```
+
+---
+
+## Commands
+
+| Command | Description |
+|---|---|
+| `npm run build` | Compile TypeScript → `dist/` |
+| `npm run dev` | Watch mode (auto-recompile) |
+| `npm start` | Start the server (`node dist/server.js`) |
+| `npm test` | Run tests |
+
+---
+
+## Security note
+
+The UI has no authentication. Only expose port 3000 on your local network.
 
 ## License
+
 MIT

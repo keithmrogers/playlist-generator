@@ -83,6 +83,21 @@ export class DiscordService {
     });
   }
 
+  /** Start playing a resource without blocking — caller is responsible for advancement */
+  public playNow(resource: AudioResource): void {
+    if (!this.player) {
+      this.player = createAudioPlayer();
+      this.player.on('stateChange', (_old, newState) => {
+        this.lastPlayerStatus = newState.status;
+      });
+      this.getVoiceConnection()?.subscribe(this.player);
+    }
+    this.player.on('error', (err) => {
+      console.warn('AudioPlayer error suppressed:', err.message);
+    });
+    this.player.play(resource);
+  }
+
   /** Pause the current audio resource */
   public pause(): void {
     if (!this.player) throw new Error('DiscordService is not initialized');
@@ -97,8 +112,7 @@ export class DiscordService {
 
   /** Stop the current audio resource */
   public stop(): void {
-    if (!this.player) throw new Error('DiscordService is not initialized');
-    this.player.stop();
+    this.player?.stop();
   }
 
   destroy(): void {
