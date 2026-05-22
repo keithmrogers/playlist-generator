@@ -2,10 +2,7 @@ node_modules
 .env
 .env.*
 !.env.example
-src/**/*.ts
-src/**/*.tsx
 openspec
-tests
 *.md
 !README.md
 .git
