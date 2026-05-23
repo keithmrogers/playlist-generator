@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN YOUTUBE_DL_SKIP_DOWNLOAD=true npm ci
 
 COPY tsconfig.json ./
 COPY src ./src
