@@ -2,6 +2,7 @@ import { createAudioResource, demuxProbe, AudioPlayerStatus } from '@discordjs/v
 import type { Response } from 'express';
 import { DiscordService } from './services/discord-service.js';
 import { YouTubeService } from './services/youtube-service.js';
+import { YouTubeCache } from './services/youtube-cache.js';
 import type { Playlist, Track } from './services/playlist-service.js';
 
 export interface NowPlayingState {
@@ -32,9 +33,10 @@ export class PlaybackState {
   private pollInterval: ReturnType<typeof setInterval>;
   private advancing = false;
 
-  constructor(discord: DiscordService) {
+  constructor(discord: DiscordService, cachePath?: string) {
     this.discord = discord;
-    this.yt = new YouTubeService();
+    const cache = cachePath ? new YouTubeCache(cachePath) : undefined;
+    this.yt = new YouTubeService(cache);
     this.pollInterval = setInterval(() => this.poll(), 200);
   }
 
