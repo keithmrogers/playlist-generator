@@ -24,7 +24,8 @@ const playlists = new PlaylistService(PLAYLIST_FOLDER);
 await discord.init();
 await discord.connectVoice();
 
-const playback = new PlaybackState(discord);
+const cachePath = path.join(PLAYLIST_FOLDER, 'youtube-cache.json');
+const playback = new PlaybackState(discord, cachePath);
 const app = express();
 app.use(express.json());
 app.use(express.static(publicDir));

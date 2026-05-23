@@ -3,6 +3,7 @@ import { Readable } from 'stream';
 import { spawn } from 'child_process';
 import { createRequire } from 'module';
 import type { ChildProcess } from 'child_process';
+import type { YouTubeCache } from './youtube-cache.js';
 
 // Prefer the bundled binary; fall back to system yt-dlp when the bundled
 // binary wasn't downloaded (e.g. YOUTUBE_DL_SKIP_DOWNLOAD=true in Docker).
@@ -22,6 +23,12 @@ export interface YouTubeVideo {
 
 export class YouTubeService {
   private currentProcess?: ChildProcess;
+  private cache?: YouTubeCache;
+
+  constructor(cache?: YouTubeCache) {
+    this.cache = cache;
+  }
+
   /** Ensure yt-dlp binary is installed and on PATH */
   async healthCheck(): Promise<void> {
     try {
@@ -35,9 +42,19 @@ export class YouTubeService {
       throw err;
     }
   }
+
   async search(query: string): Promise<YouTubeVideo | null> {
     // Colons confuse yt-dlp into treating the query as a URL scheme (e.g. "Metamorphosis: Two" → protocol "Metamorphosis:")
     const safeQuery = query.replace(/:/g, ' ');
+
+    if (this.cache) {
+      const cached = await this.cache.get(safeQuery);
+      if (cached) {
+        console.log(`[YouTubeService] cache hit for: "${query}"`);
+        return cached;
+      }
+    }
+
     let results: any;
     try {
         results = await youtubedl.exec(safeQuery, {
@@ -60,11 +77,19 @@ export class YouTubeService {
       return null;
     }
     const video = parsedResults.entries[0];
-    return {
+    const result: YouTubeVideo = {
       id: video.id ?? '',
       title: video.title ?? '',
       url: video.webpage_url ?? ''
     };
+
+    if (this.cache) {
+      await this.cache.set(safeQuery, result).catch(err =>
+        console.warn(`[YouTubeService] failed to write cache:`, err)
+      );
+    }
+
+    return result;
   }
 
   async getAudioStream(url: string): Promise<Readable> {
@@ -104,6 +129,7 @@ export class YouTubeService {
       this.currentProcess = undefined;
     }
   }
+
   /** Cleanup the YouTubeService, cancelling any active process */
   public destroy(): void {
     this.cancelStream();
