@@ -4,10 +4,15 @@ import { spawn } from 'child_process';
 import { createRequire } from 'module';
 import type { ChildProcess } from 'child_process';
 
-// Use the same bundled yt-dlp binary that youtube-dl-exec uses for search,
-// rather than relying on whatever (possibly outdated) version is on PATH.
+// Prefer the bundled binary; fall back to system yt-dlp when the bundled
+// binary wasn't downloaded (e.g. YOUTUBE_DL_SKIP_DOWNLOAD=true in Docker).
 const require = createRequire(import.meta.url);
-const YTDLP_BIN: string = require.resolve('youtube-dl-exec/bin/yt-dlp');
+let YTDLP_BIN: string;
+try {
+  YTDLP_BIN = require.resolve('youtube-dl-exec/bin/yt-dlp');
+} catch {
+  YTDLP_BIN = 'yt-dlp';
+}
 
 export interface YouTubeVideo {
   id: string;
