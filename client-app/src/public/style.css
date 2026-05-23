@@ -22,12 +22,104 @@ body {
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   min-height: 100dvh;
+}
+
+/* ── Mode picker ─────────────────────────────────────── */
+
+.mode-picker {
+  align-items: center;
+  background: var(--bg);
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  left: 0;
+  padding: 2rem 1.25rem;
+  position: fixed;
+  right: 0;
+  top: 0;
+  transition: opacity 0.25s ease;
+  z-index: 999;
+}
+
+.mode-picker.dismissed {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mode-picker-inner {
+  max-width: 420px;
+  text-align: center;
+  width: 100%;
+}
+
+.mode-picker-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.mode-picker-sub {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 2rem;
+}
+
+.mode-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mode-opt-btn {
+  align-items: center;
+  background: var(--surface);
+  border: 2px solid var(--surface-2);
+  border-radius: 16px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 120px;
+  padding: 1.5rem 1rem;
+  transition: border-color 0.15s, background 0.15s;
+  width: 100%;
+}
+
+.mode-opt-btn:active {
+  background: var(--surface-2);
+  border-color: var(--accent);
+}
+
+.mode-opt-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.mode-opt-label {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.mode-opt-desc {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* ── Soundboard ──────────────────────────────────────── */
+
+body {
   padding-bottom: var(--footer-height);
 }
 
 header {
-  padding: 1rem 1.25rem 0.5rem;
+  align-items: center;
   border-bottom: 1px solid var(--surface-2);
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem 0.5rem;
 }
 
 header h1 {
@@ -38,26 +130,34 @@ header h1 {
   text-transform: uppercase;
 }
 
+.mode-chip {
+  background: var(--surface-2);
+  border-radius: 999px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.6rem;
+  text-transform: uppercase;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mode-chip:hover {
+  background: var(--accent);
+  color: var(--text);
+}
+
 main {
   padding: 1rem;
 }
 
+/* Fixed 2×2 grid */
 .mood-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
-}
-
-@media (min-width: 480px) {
-  .mood-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (min-width: 720px) {
-  .mood-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
 }
 
 .mood-btn {
@@ -66,14 +166,14 @@ main {
   border-radius: 12px;
   color: var(--text);
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
-  min-height: 72px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  min-height: 120px;
   padding: 1rem 0.75rem;
   text-align: center;
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
   width: 100%;
-  word-break: break-word;
 }
 
 .mood-btn:active {
@@ -86,22 +186,17 @@ main {
   background: var(--surface-2);
 }
 
-.mood-btn .track-count {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-top: 0.25rem;
+.mood-btn.error {
+  animation: error-flash 0.4s ease;
 }
 
-.empty-msg {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  grid-column: 1 / -1;
-  padding: 2rem 0;
-  text-align: center;
+@keyframes error-flash {
+  0%, 100% { border-color: transparent; background: var(--surface); }
+  40%, 60% { border-color: var(--accent); background: rgba(233, 69, 96, 0.15); }
 }
 
-/* Now-playing footer */
+/* ── Now-playing footer ──────────────────────────────── */
+
 footer#now-playing {
   align-items: center;
   background: var(--surface);

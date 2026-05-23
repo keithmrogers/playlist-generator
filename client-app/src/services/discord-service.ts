@@ -5,17 +5,21 @@ export class DiscordService {
   private lastPlayerStatus?: AudioPlayerStatus;
   private client: Client;
   private player?: AudioPlayer;
+  private token: string;
   private channelId: string;
   private guildId?: string;
 
   constructor(token: string, channelId: string) {
+    this.token = token;
     this.client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
     this.channelId = channelId;
-    this.client.login(token);
+  }
+
+  async connect(): Promise<void> {
+    await this.client.login(this.token);
   }
 
   async init(): Promise<void> {
-    // wait for the Discord client to be ready
     await new Promise<void>(resolve => this.client.once('clientReady', () => resolve()));
   }
 
@@ -115,6 +119,21 @@ export class DiscordService {
   /** Stop the current audio resource */
   public stop(): void {
     this.player?.stop();
+  }
+
+  /** Leave the voice channel without destroying the Discord client */
+  public disconnectVoice(): void {
+    const conn = this.getVoiceConnection();
+    this.guildId = undefined;          // clear first so getVoiceConnection returns undefined elsewhere
+    this.lastPlayerStatus = undefined;
+    this.player?.stop();
+    this.player = undefined;
+    try {
+      conn?.disconnect();              // sends channel_id: null to Discord gateway
+      conn?.destroy();                 // cleans up internal state
+    } catch {
+      // already destroyed or adapter unavailable
+    }
   }
 
   destroy(): void {

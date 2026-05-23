@@ -91,6 +91,28 @@ export class PlaybackState {
     }
   }
 
+  resetDiscordPlayback(): void {
+    this.prevPlayerStatus = undefined;
+    this.advancing = true;   // block poll-loop advance while tearing down
+    this.playlist = null;
+    this.tracks = [];
+    this.advancing = false;
+    this.broadcast();
+  }
+
+  async loadLocalMode(playlist: Playlist): Promise<void> {
+    this.playlist = playlist;
+    this.tracks = shuffle(playlist.tracks);
+    this.currentIndex = 0;
+    this.broadcast();
+  }
+
+  skipLocalMode(): void {
+    if (!this.tracks.length) return;
+    this.currentIndex = (this.currentIndex + 1) % this.tracks.length;
+    this.broadcast();
+  }
+
   pause(): void {
     if (!this.playlist) throw new Error('No active playlist');
     this.discord.pause();

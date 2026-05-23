@@ -1,33 +1,71 @@
-const grid = document.getElementById('mood-grid');
-const emptyMsg = document.getElementById('empty-msg');
+const modePicker      = document.getElementById('mode-picker');
+const modeChip        = document.getElementById('mode-chip');
 const nowPlayingLabel = document.getElementById('now-playing-label');
 const nowPlayingTrack = document.getElementById('now-playing-track');
-const btnPauseResume = document.getElementById('btn-pause-resume');
-const btnSkip = document.getElementById('btn-skip');
+const btnPauseResume  = document.getElementById('btn-pause-resume');
+const btnSkip         = document.getElementById('btn-skip');
+const localAudio      = document.getElementById('local-audio');
 
+const STORAGE_KEY = 'playback-mode';
+let activeMode = null;
 let paused = false;
 let activePlaylistName = null;
 
-// --- Render mood buttons ---
+// --- Mode picker ---
 
-async function loadPlaylists() {
-  const res = await fetch('/playlists');
-  const items = await res.json();
-  grid.querySelectorAll('.mood-btn').forEach(b => b.remove());
-  if (items.length === 0) {
-    emptyMsg.hidden = false;
-    return;
-  }
-  emptyMsg.hidden = true;
-  for (const item of items) {
-    const btn = document.createElement('button');
-    btn.className = 'mood-btn';
-    btn.dataset.name = item.name;
-    btn.innerHTML = `${item.name}<span class="track-count">${item.trackCount} tracks</span>`;
-    btn.addEventListener('click', () => playPlaylist(item.name));
-    grid.appendChild(btn);
+function showSoundboard(mode, animate = true) {
+  activeMode = mode;
+  modeChip.textContent = mode === 'local' ? 'Local Audio' : 'Discord Bot';
+  if (animate) {
+    modePicker.classList.add('dismissed');
+  } else {
+    modePicker.style.display = 'none';
   }
 }
+
+const savedMode = sessionStorage.getItem(STORAGE_KEY);
+if (savedMode) {
+  showSoundboard(savedMode, false);
+}
+
+modeChip.addEventListener('click', async () => {
+  if (activeMode === 'discord') {
+    await fetch('/disconnect-discord', { method: 'POST' });
+  } else if (activeMode === 'local') {
+    localAudio.pause();
+    localAudio.src = '';
+  }
+  sessionStorage.removeItem(STORAGE_KEY);
+  activeMode = null;
+  modePicker.style.display = '';
+  modePicker.classList.remove('dismissed');
+});
+
+document.querySelectorAll('.mode-opt-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const mode = btn.dataset.mode;
+
+    if (mode === 'discord') {
+      const label = btn.querySelector('.mode-opt-label');
+      const orig = label.textContent;
+      label.textContent = 'Connecting…';
+      btn.disabled = true;
+      try {
+        const res = await fetch('/connect-discord', { method: 'POST' });
+        if (!res.ok) throw new Error('connect failed');
+      } catch {
+        label.textContent = orig;
+        btn.disabled = false;
+        return;
+      }
+    }
+
+    sessionStorage.setItem(STORAGE_KEY, mode);
+    showSoundboard(mode, true);
+  });
+});
+
+// --- Mood buttons ---
 
 function setActiveButton(name) {
   document.querySelectorAll('.mood-btn').forEach(btn => {
@@ -35,21 +73,64 @@ function setActiveButton(name) {
   });
 }
 
-// --- Playback controls ---
-
-async function playPlaylist(name) {
-  await fetch(`/play/${encodeURIComponent(name)}`, { method: 'POST' });
+function flashError(name) {
+  const btn = document.querySelector(`.mood-btn[data-name="${name}"]`);
+  if (!btn) return;
+  btn.classList.remove('error');
+  void btn.offsetWidth;
+  btn.classList.add('error');
+  btn.addEventListener('animationend', () => btn.classList.remove('error'), { once: true });
 }
 
-btnPauseResume.addEventListener('click', async () => {
-  if (paused) {
-    await fetch('/resume', { method: 'POST' });
+async function playPlaylist(name) {
+  if (activeMode === 'local') {
+    localAudio.src = `/stream/${encodeURIComponent(name)}`;
+    try {
+      await localAudio.play();
+    } catch {
+      flashError(name);
+    }
   } else {
-    await fetch('/pause', { method: 'POST' });
+    const res = await fetch(`/play/${encodeURIComponent(name)}`, { method: 'POST' });
+    if (!res.ok) flashError(name);
+  }
+}
+
+document.querySelectorAll('.mood-btn').forEach(btn => {
+  btn.addEventListener('click', () => playPlaylist(btn.dataset.name));
+});
+
+// --- Playback controls ---
+
+btnPauseResume.addEventListener('click', async () => {
+  if (activeMode === 'local') {
+    if (paused) {
+      await localAudio.play();
+    } else {
+      localAudio.pause();
+    }
+    paused = !paused;
+    btnPauseResume.textContent = paused ? '▶' : '⏸';
+  } else {
+    if (paused) {
+      await fetch('/resume', { method: 'POST' });
+    } else {
+      await fetch('/pause', { method: 'POST' });
+    }
   }
 });
 
-btnSkip.addEventListener('click', () => fetch('/skip', { method: 'POST' }));
+btnSkip.addEventListener('click', async () => {
+  if (activeMode === 'local') {
+    await fetch('/skip?local=1', { method: 'POST' });
+    if (activePlaylistName) {
+      localAudio.src = `/stream/${encodeURIComponent(activePlaylistName)}`;
+      try { await localAudio.play(); } catch { /* ignore */ }
+    }
+  } else {
+    await fetch('/skip', { method: 'POST' });
+  }
+});
 
 // --- SSE status updates ---
 
@@ -59,9 +140,7 @@ function connectSSE() {
     const state = JSON.parse(e.data);
     updateUI(state);
   };
-  es.onerror = () => {
-    // EventSource reconnects automatically
-  };
+  es.onerror = () => {};
 }
 
 function updateUI(state) {
@@ -76,9 +155,12 @@ function updateUI(state) {
     return;
   }
 
-  const isPlaying = state.playerStatus === 'playing';
   const isPaused = state.playerStatus === 'paused';
-  paused = isPaused;
+
+  if (activeMode !== 'local') {
+    paused = isPaused;
+    btnPauseResume.textContent = isPaused ? '▶' : '⏸';
+  }
 
   const trackNum = `${state.trackIndex + 1}/${state.totalTracks}`;
   nowPlayingLabel.textContent = `${state.playlistName}  ·  ${trackNum}`;
@@ -94,10 +176,8 @@ function updateUI(state) {
 
   btnPauseResume.hidden = false;
   btnSkip.hidden = false;
-  btnPauseResume.textContent = isPaused ? '▶' : '⏸';
 }
 
 // --- Init ---
 
-loadPlaylists();
 connectSSE();

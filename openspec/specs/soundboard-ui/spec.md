@@ -1,15 +1,15 @@
 ## ADDED Requirements
 
-### Requirement: Mood grid displays all available playlists
-The UI SHALL display one button per playlist returned by `GET /playlists`, arranged in a responsive grid.
+### Requirement: Mood grid displays four fixed mood buttons
+The UI SHALL display exactly four fixed mood buttons — Ambient, Action, Foreboding, Triumphant — arranged in a 2×2 grid, regardless of what playlist files exist on disk.
 
-#### Scenario: Playlists loaded
-- **WHEN** the page loads and `GET /playlists` returns results
-- **THEN** each playlist is shown as a labelled button using its `name` field; buttons are large enough to tap comfortably on a phone (min 64px height)
+#### Scenario: Page loaded with mode selected
+- **WHEN** the soundboard view is shown after mode selection
+- **THEN** four large buttons are displayed: Ambient, Action, Foreboding, Triumphant; no dynamic loading from `/playlists` is required to render the grid
 
-#### Scenario: No playlists available
-- **WHEN** `GET /playlists` returns an empty array
-- **THEN** a message is displayed instructing the user to add playlist JSON files to the playlists directory
+#### Scenario: Missing playlist file
+- **WHEN** a mood button is tapped but no playlist JSON with a matching `name` exists on disk
+- **THEN** the server returns an error and the UI shows a brief error state on that button (e.g., red flash); the button does not disappear
 
 ### Requirement: Tapping a mood button switches playback immediately
 The UI SHALL send `POST /play/:name` when a mood button is tapped and reflect the active playlist visually.
