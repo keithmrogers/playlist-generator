@@ -7,15 +7,39 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+  <!-- Fixed full-screen overlay — covers the soundboard until a mode is chosen -->
+  <div id="mode-picker" class="mode-picker">
+    <div class="mode-picker-inner">
+      <h1 class="mode-picker-title">Soundboard</h1>
+      <p class="mode-picker-sub">How are you playing tonight?</p>
+      <div class="mode-options">
+        <button class="mode-opt-btn" data-mode="local">
+          <span class="mode-opt-icon">🔊</span>
+          <span class="mode-opt-label">Local Audio</span>
+          <span class="mode-opt-desc">Bluetooth speaker or device</span>
+        </button>
+        <button class="mode-opt-btn" data-mode="discord">
+          <span class="mode-opt-icon">🎮</span>
+          <span class="mode-opt-label">Discord Bot</span>
+          <span class="mode-opt-desc">Stream to voice channel</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Soundboard — always in DOM, revealed when mode picker dismisses -->
   <header>
     <h1>Soundboard</h1>
+    <span id="mode-chip" class="mode-chip"></span>
   </header>
 
   <main>
-    <div id="mood-grid" class="mood-grid">
-      <p class="empty-msg" id="empty-msg" hidden>
-        No playlists found. Add JSON playlist files to your playlists directory.
-      </p>
+    <div class="mood-grid">
+      <button class="mood-btn" data-name="Ambient">Ambient</button>
+      <button class="mood-btn" data-name="Action">Action</button>
+      <button class="mood-btn" data-name="Foreboding">Foreboding</button>
+      <button class="mood-btn" data-name="Triumphant">Triumphant</button>
     </div>
   </main>
 
@@ -30,6 +54,7 @@
     </div>
   </footer>
 
+  <audio id="local-audio"></audio>
   <script src="app.js"></script>
 </body>
 </html>
