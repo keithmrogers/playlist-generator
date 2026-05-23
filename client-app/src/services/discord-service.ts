@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits, VoiceBasedChannel } from 'discord.js';
-import { joinVoiceChannel, createAudioPlayer, AudioPlayer, AudioResource, VoiceConnection, AudioPlayerStatus, getVoiceConnection } from '@discordjs/voice';
+import { joinVoiceChannel, createAudioPlayer, AudioPlayer, AudioResource, VoiceConnection, AudioPlayerStatus, getVoiceConnection, VoiceConnectionStatus, entersState } from '@discordjs/voice';
 
 export class DiscordService {
   private lastPlayerStatus?: AudioPlayerStatus;
@@ -16,7 +16,7 @@ export class DiscordService {
 
   async init(): Promise<void> {
     // wait for the Discord client to be ready
-    await new Promise<void>(resolve => this.client.once('ready', () => resolve()));
+    await new Promise<void>(resolve => this.client.once('clientReady', () => resolve()));
   }
 
   getVoiceConnection(): VoiceConnection | undefined {
@@ -34,22 +34,26 @@ export class DiscordService {
     const connection = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
-      adapterCreator: channel.guild.voiceAdapterCreator
+      adapterCreator: channel.guild.voiceAdapterCreator,
+      selfDeaf: false,
+      selfMute: false,
     });
-    
-    //https://github.com/discordjs/discord.js/issues/9185#issuecomment-1452514375
-    const networkStateChangeHandler = (newNetworkState: any) => {
-      const newUdp = Reflect.get(newNetworkState, 'udp');
-      clearInterval(newUdp?.keepAliveInterval);
-    }
 
     connection.on('stateChange', (oldState: any, newState: any) => {
+      //https://github.com/discordjs/discord.js/issues/9185#issuecomment-1452514375
+      const networkStateChangeHandler = (newNetworkState: any) => {
+        const newUdp = Reflect.get(newNetworkState, 'udp');
+        clearInterval(newUdp?.keepAliveInterval);
+      };
       const oldNetworking = Reflect.get(oldState, 'networking');
       const newNetworking = Reflect.get(newState, 'networking');
-
       oldNetworking?.off('stateChange', networkStateChangeHandler);
       newNetworking?.on('stateChange', networkStateChangeHandler);
     });
+
+    connection.on('error', () => {});
+
+    await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
   }
 
   async playResource(resource: AudioResource): Promise<void> {
@@ -83,6 +87,19 @@ export class DiscordService {
     });
   }
 
+  /** Start playing a resource without blocking — caller is responsible for advancement */
+  public playNow(resource: AudioResource): void {
+    if (!this.player) {
+      this.player = createAudioPlayer();
+      this.player.on('stateChange', (_old, newState) => {
+        this.lastPlayerStatus = newState.status;
+      });
+      this.player.on('error', () => {});
+      this.getVoiceConnection()?.subscribe(this.player);
+    }
+    this.player.play(resource);
+  }
+
   /** Pause the current audio resource */
   public pause(): void {
     if (!this.player) throw new Error('DiscordService is not initialized');
@@ -97,8 +114,7 @@ export class DiscordService {
 
   /** Stop the current audio resource */
   public stop(): void {
-    if (!this.player) throw new Error('DiscordService is not initialized');
-    this.player.stop();
+    this.player?.stop();
   }
 
   destroy(): void {

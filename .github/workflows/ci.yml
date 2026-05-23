@@ -9,28 +9,47 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [16.x]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test stage
+        uses: docker/build-push-action@v6
         with:
-          node-version: ${{ matrix.node-version }}
+          context: ./client-app
+          file: ./client-app/Containerfile
+          target: test
+          push: false
+          tags: playlist-generator:test-ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build project
-        run: npm run build
-
-      - name: Run tests with coverage
-        run: npm test -- --coverage
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@v2
+      - name: Export test coverage from Docker stage
+        uses: docker/build-push-action@v6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          context: ./client-app
+          file: ./client-app/Containerfile
+          target: coverage-export
+          outputs: type=local,dest=/tmp/test-coverage
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-coverage
+          path: /tmp/test-coverage/coverage
+          if-no-files-found: error
+
+      - name: Build runtime image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./client-app
+          file: ./client-app/Containerfile
+          push: false
+          tags: playlist-generator:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

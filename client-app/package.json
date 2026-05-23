@@ -1,43 +1,36 @@
 {
   "name": "playlist-generator",
   "version": "1.0.0",
-  "description": "Generate Spotify playlists and stream them to Discord via YouTube audio",
-  "bin": "dist/cli.js",
+  "description": "D&D ambient music soundboard — stream playlists to Discord from a mobile-friendly web UI",
   "type": "module",
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "jest"
+    "start": "node dist/server.js",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --forceExit"
   },
   "files": [
-    "dist"
+    "dist",
+    "src/public"
   ],
   "dependencies": {
-    "@discordjs/voice": "^0.14.0",
-    "clipboardy": "^4.0.0",
-    "discord.js": "^14.0.0",
+    "@discordjs/opus": "^0.10.0",
+    "@discordjs/voice": "^0.19.2",
+    "discord.js": "^14.26.4",
     "dotenv": "^16.0.0",
+    "express": "^4.19.0",
     "ffmpeg-static": "^5.2.0",
-    "ink": "^6.0.1",
-    "ink-select-input": "^6.2.0",
-    "ink-text-input": "^6.0.0",
     "libsodium-wrappers": "^0.7.15",
-    "node-fetch": "^3.3.2",
-    "react": "^19.1.0",
-    "spotify-web-api-node": "^5.0.2",
     "youtube-dl-exec": "^3.0.22"
   },
   "devDependencies": {
     "@sindresorhus/tsconfig": "^7.0.0",
-    "@types/ink-select-input": "^3.0.5",
+    "@types/express": "^4.17.21",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.1.0",
-    "@types/node-fetch": "^2.6.13",
-    "@types/react": "^19.1.8",
-    "@types/spotify-web-api-node": "^5.0.11",
     "jest": "^30.0.5",
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",

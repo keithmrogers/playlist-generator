@@ -1,7 +1,18 @@
 import youtubedl from 'youtube-dl-exec';
 import { Readable } from 'stream';
 import { spawn } from 'child_process';
+import { createRequire } from 'module';
 import type { ChildProcess } from 'child_process';
+
+// Prefer the bundled binary; fall back to system yt-dlp when the bundled
+// binary wasn't downloaded (e.g. YOUTUBE_DL_SKIP_DOWNLOAD=true in Docker).
+const require = createRequire(import.meta.url);
+let YTDLP_BIN: string;
+try {
+  YTDLP_BIN = require.resolve('youtube-dl-exec/bin/yt-dlp');
+} catch {
+  YTDLP_BIN = 'yt-dlp';
+}
 
 export interface YouTubeVideo {
   id: string;
@@ -25,14 +36,17 @@ export class YouTubeService {
     }
   }
   async search(query: string): Promise<YouTubeVideo | null> {
+    // Colons confuse yt-dlp into treating the query as a URL scheme (e.g. "Metamorphosis: Two" → protocol "Metamorphosis:")
+    const safeQuery = query.replace(/:/g, ' ');
     let results: any;
     try {
-        results = await youtubedl.exec(query, {
+        results = await youtubedl.exec(safeQuery, {
         dumpSingleJson: true,
         defaultSearch: 'ytsearch1',
         quiet: true,
-        
-      });
+        // jsRuntimes not yet in type definitions
+        ...({ jsRuntimes: `node:${process.execPath}` } as object),
+      } as Parameters<typeof youtubedl.exec>[1]);
     } catch (err: any) {
       console.error(`[YouTubeService] yt-dlp search error:`, err);
       if (err.code === 'ENOENT') {
@@ -58,13 +72,11 @@ export class YouTubeService {
     const args = [
       url,
       '-o', '-',
-      '-f', 'bestaudio/best',
+      '-f', 'bestaudio[ext=webm]/bestaudio/best',
       '--quiet',
       '--no-playlist',
-      '--hls-prefer-native',
-      '--hls-use-mpegts'
     ];
-    const proc = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawn(YTDLP_BIN, [...args, '--js-runtimes', `node:${process.execPath}`], { stdio: ['ignore', 'pipe', 'pipe'] });
     this.currentProcess = proc;
     // Suppress errors on subprocess and its stderr
     proc.on('error', () => {});

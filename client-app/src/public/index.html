@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D&D Soundboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Soundboard</h1>
+  </header>
+
+  <main>
+    <div id="mood-grid" class="mood-grid">
+      <p class="empty-msg" id="empty-msg" hidden>
+        No playlists found. Add JSON playlist files to your playlists directory.
+      </p>
+    </div>
+  </main>
+
+  <footer id="now-playing">
+    <div class="now-playing-info">
+      <div class="now-playing-label" id="now-playing-label">No playlist selected</div>
+      <div class="now-playing-track" id="now-playing-track"></div>
+    </div>
+    <div class="controls">
+      <button id="btn-pause-resume" class="control-btn" hidden>⏸</button>
+      <button id="btn-skip" class="control-btn" hidden>⏭</button>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
