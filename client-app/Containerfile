@@ -1,5 +1,9 @@
 FROM node:22-slim AS build-base
 
+# Tell youtube-dl-exec to use the system yt-dlp (installed via pip in runtime,
+# or resolved from PATH in dev) rather than the bundled binary.
+ENV YOUTUBE_DL_PATH=yt-dlp
+
 # Build native Node modules and compile TypeScript in-container.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
