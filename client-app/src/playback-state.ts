@@ -11,6 +11,7 @@ export interface NowPlayingState {
   trackIndex: number;
   totalTracks: number;
   playerStatus: string;
+  loading: boolean;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -32,6 +33,7 @@ export class PlaybackState {
   private sseClients = new Set<Response>();
   private pollInterval: ReturnType<typeof setInterval>;
   private advancing = false;
+  private loading = false;
 
   constructor(discord: DiscordService, cachePath?: string) {
     this.discord = discord;
@@ -79,6 +81,7 @@ export class PlaybackState {
     if (!this.tracks.length) return;
     const track = this.tracks[this.currentIndex]!;
     const query = `${track.name} ${track.artists.join(' ')}`;
+    this.loading = true;
     this.broadcast();
     try {
       const video = await this.yt.search(query);
@@ -86,8 +89,10 @@ export class PlaybackState {
       const stream = await this.yt.getAudioStream(video.url);
       const { stream: probed, type } = await demuxProbe(stream);
       const resource = createAudioResource(probed, { inputType: type, metadata: { title: video.title, id: video.id } });
+      this.loading = false;
       this.discord.playNow(resource);
     } catch {
+      this.loading = false;
     }
   }
 
@@ -139,6 +144,7 @@ export class PlaybackState {
       trackIndex: this.currentIndex,
       totalTracks: this.tracks.length,
       playerStatus: this.discord.getPlayerStatus() ?? 'idle',
+      loading: this.loading,
     };
   }
 
