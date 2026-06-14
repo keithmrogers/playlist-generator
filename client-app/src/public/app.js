@@ -2,6 +2,7 @@ const modePicker      = document.getElementById('mode-picker');
 const modeChip        = document.getElementById('mode-chip');
 const nowPlayingLabel = document.getElementById('now-playing-label');
 const nowPlayingTrack = document.getElementById('now-playing-track');
+const bufferingBadge  = document.getElementById('buffering-badge');
 const btnPauseResume  = document.getElementById('btn-pause-resume');
 const btnSkip         = document.getElementById('btn-skip');
 const localAudio      = document.getElementById('local-audio');
@@ -10,6 +11,30 @@ const STORAGE_KEY = 'playback-mode';
 let activeMode = null;
 let paused = false;
 let activePlaylistName = null;
+
+// --- Buffering timer ---
+
+let bufferingStart = null;
+let bufferingTimer = null;
+
+function startBufferingTimer() {
+  if (bufferingTimer) return;
+  bufferingStart = Date.now();
+  bufferingBadge.hidden = false;
+  bufferingBadge.textContent = 'Buffering 0s';
+  bufferingTimer = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - bufferingStart) / 1000);
+    bufferingBadge.textContent = `Buffering ${elapsed}s`;
+  }, 1000);
+}
+
+function stopBufferingTimer() {
+  if (!bufferingTimer) return;
+  clearInterval(bufferingTimer);
+  bufferingTimer = null;
+  bufferingStart = null;
+  bufferingBadge.hidden = true;
+}
 
 // --- Mode picker ---
 
@@ -70,6 +95,12 @@ document.querySelectorAll('.mode-opt-btn').forEach(btn => {
 function setActiveButton(name) {
   document.querySelectorAll('.mood-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.name === name);
+  });
+}
+
+function setLoadingButton(name) {
+  document.querySelectorAll('.mood-btn').forEach(btn => {
+    btn.classList.toggle('loading', btn.dataset.name === name);
   });
 }
 
@@ -152,7 +183,19 @@ function updateUI(state) {
     nowPlayingTrack.textContent = '';
     btnPauseResume.hidden = true;
     btnSkip.hidden = true;
+    stopBufferingTimer();
+    setLoadingButton(null);
     return;
+  }
+
+  const isBuffering = state.loading || state.playerStatus === 'buffering';
+
+  if (isBuffering) {
+    startBufferingTimer();
+    setLoadingButton(activePlaylistName);
+  } else {
+    stopBufferingTimer();
+    setLoadingButton(null);
   }
 
   const isPaused = state.playerStatus === 'paused';
@@ -171,7 +214,7 @@ function updateUI(state) {
       ? `${state.track.name} — ${artists}`
       : state.track.name;
   } else {
-    nowPlayingTrack.textContent = 'Loading...';
+    nowPlayingTrack.textContent = '';
   }
 
   btnPauseResume.hidden = false;
