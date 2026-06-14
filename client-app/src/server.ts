@@ -22,7 +22,7 @@ const PORT = parseInt(process.env['PORT'] ?? '3000', 10);
 
 const discord = new DiscordService(token, channelId);
 const playlists = new PlaylistService(PLAYLIST_FOLDER);
-const cachePath = path.join(PLAYLIST_FOLDER, 'youtube-cache.json');
+const cachePath = path.join(__dirname, '..', 'youtube-cache.json');
 const playback = new PlaybackState(discord, cachePath);
 const localYt = new YouTubeService();
 let discordLoggedIn = false;
