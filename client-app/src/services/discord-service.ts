@@ -8,6 +8,8 @@ export class DiscordService {
   private token: string;
   private channelId: string;
   private guildId?: string;
+  /** Called when the voice connection is lost (kicked, network drop, etc.) */
+  public onDisconnect?: () => void;
 
   constructor(token: string, channelId: string) {
     this.token = token;
@@ -29,11 +31,26 @@ export class DiscordService {
   }
 
   /**
-   * Connect to the voice channel and set up the audio player
+   * Connect (or reconnect) to the voice channel.
+   * Safe to call repeatedly — destroys any non-Ready existing connection first, then
+   * re-subscribes the audio player to the fresh connection. This lets the button always
+   * recover from a kick and take over from another bot instance (last-press-wins).
    */
   public async connectVoice(): Promise<void> {
     const channel = await this.client.channels.fetch(this.channelId) as VoiceBasedChannel;
     this.guildId = channel.guild.id;
+
+    // If already healthy, nothing to do.
+    const existing = getVoiceConnection(this.guildId);
+    if (existing?.state.status === VoiceConnectionStatus.Ready) {
+      if (this.player) existing.subscribe(this.player);
+      return;
+    }
+
+    // Tear down any stale/disconnected connection so joinVoiceChannel creates a fresh one.
+    if (existing) {
+      try { existing.destroy(); } catch { /* already gone */ }
+    }
 
     const connection = joinVoiceChannel({
       channelId: channel.id,
@@ -53,11 +70,24 @@ export class DiscordService {
       const newNetworking = Reflect.get(newState, 'networking');
       oldNetworking?.off('stateChange', networkStateChangeHandler);
       newNetworking?.on('stateChange', networkStateChangeHandler);
+
+      // Notify server when the bot is kicked or the connection otherwise drops.
+      if (
+        newState.status === VoiceConnectionStatus.Disconnected ||
+        newState.status === VoiceConnectionStatus.Destroyed
+      ) {
+        this.onDisconnect?.();
+      }
     });
 
     connection.on('error', () => {});
 
     await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
+
+    // Re-subscribe the existing player so audio resumes on the new connection.
+    if (this.player) {
+      connection.subscribe(this.player);
+    }
   }
 
   async playResource(resource: AudioResource): Promise<void> {

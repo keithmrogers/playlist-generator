@@ -28,6 +28,13 @@ const localYt = new YouTubeService();
 let discordLoggedIn = false;
 let discordVoiceConnected = false;
 const app = express();
+
+discord.onDisconnect = () => {
+  if (discordVoiceConnected) {
+    discordVoiceConnected = false;
+    playback.resetDiscordPlayback();
+  }
+};
 app.use(express.json());
 app.use(express.static(publicDir));
 
@@ -51,10 +58,10 @@ app.post('/connect-discord', async (_req, res) => {
       await discord.init();
       discordLoggedIn = true;
     }
-    if (!discordVoiceConnected) {
-      await discord.connectVoice();
-      discordVoiceConnected = true;
-    }
+    // Always attempt connectVoice — it's idempotent (no-op if already Ready)
+    // and recovers from kicks or takes over from another running instance.
+    await discord.connectVoice();
+    discordVoiceConnected = true;
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: String(err.message ?? err) });
