@@ -22,12 +22,19 @@ const PORT = parseInt(process.env['PORT'] ?? '3000', 10);
 
 const discord = new DiscordService(token, channelId);
 const playlists = new PlaylistService(PLAYLIST_FOLDER);
-const cachePath = path.join(PLAYLIST_FOLDER, 'youtube-cache.json');
+const cachePath = path.join(__dirname, '..', 'youtube-cache.json');
 const playback = new PlaybackState(discord, cachePath);
 const localYt = new YouTubeService();
 let discordLoggedIn = false;
 let discordVoiceConnected = false;
 const app = express();
+
+discord.onDisconnect = () => {
+  if (discordVoiceConnected) {
+    discordVoiceConnected = false;
+    playback.resetDiscordPlayback();
+  }
+};
 app.use(express.json());
 app.use(express.static(publicDir));
 
@@ -51,10 +58,10 @@ app.post('/connect-discord', async (_req, res) => {
       await discord.init();
       discordLoggedIn = true;
     }
-    if (!discordVoiceConnected) {
-      await discord.connectVoice();
-      discordVoiceConnected = true;
-    }
+    // Always attempt connectVoice — it's idempotent (no-op if already Ready)
+    // and recovers from kicks or takes over from another running instance.
+    await discord.connectVoice();
+    discordVoiceConnected = true;
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: String(err.message ?? err) });
